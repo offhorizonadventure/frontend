@@ -1,7 +1,32 @@
 import "server-only";
 
 import { fetchRazorpayPayment } from "@/lib/razorpay";
+import type { Location } from "@/lib/cart-constants";
 import { createAdminClient } from "@/utils/supabase/admin";
+
+/**
+ * What the rider is paying for, priced by the server at checkout.
+ *
+ * Held on the order rather than written as bookings up front, so abandoning a
+ * payment leaves no reservation behind. Prices are captured here so the
+ * booking that gets created later matches what was actually charged.
+ */
+export type CartSnapshot = {
+  items: {
+    vehicleId: string;
+    startDate: string;
+    endDate: string;
+    location: Location | null;
+    pricePerDay: number;
+    deposit: number;
+    total: number;
+  }[];
+  gear: {
+    gearId: string;
+    quantity: number;
+    pricePerDay: number;
+  }[];
+};
 
 /**
  * Confirms a paid order.
@@ -27,7 +52,9 @@ export async function settlePayment({
 
   const { data: order, error } = await supabase
     .from("payment_orders")
-    .select("id, customer_id, amount, status, razorpay_payment_id")
+    .select(
+      "id, customer_id, amount, status, razorpay_payment_id, cart_snapshot"
+    )
     .eq("razorpay_order_id", razorpayOrderId)
     .maybeSingle();
 
@@ -104,36 +131,86 @@ export async function settlePayment({
     return { ok: true, orderId: order.id, alreadySettled: true };
   }
 
-  // Includes any the cleanup job cancelled — a late but genuine payment
-  // should revive its own bookings, not leave the rider paid and unbooked.
-  const { data: bookings, error: bookingError } = await supabase
-    .from("bookings")
-    .select("id, total_amount")
-    .eq("payment_order_id", order.id);
+  // The bookings are created here, not at checkout — this is the first point
+  // at which we know the rider actually paid.
+  const snapshot = order.cart_snapshot as CartSnapshot | null;
 
-  if (bookingError) {
-    console.error("settlePayment: booking lookup failed", bookingError.message);
+  if (!snapshot || snapshot.items.length === 0) {
+    console.error("settlePayment: order has no cart snapshot", order.id);
+    // The payment is real, so the order stays marked paid and this is left for
+    // an admin rather than silently discarded.
+    return { ok: false, error: "We couldn't rebuild your booking." };
   }
 
-  // Each booking is marked paid for its own total, so the per-booking figures
-  // the dashboard shows stay correct across a multi-vehicle checkout.
-  for (const booking of bookings ?? []) {
-    const { error: updateError } = await supabase
+  let firstBookingId: string | null = null;
+
+  for (const item of snapshot.items) {
+    const { data: booking, error: bookingError } = await supabase
       .from("bookings")
-      .update({
+      .insert({
+        customer_id: order.customer_id,
         status: "confirmed",
         payment_status: "paid",
-        amount_paid: booking.total_amount,
+        start_date: item.startDate,
+        end_date: item.endDate,
+        location: item.location,
+        total_amount: item.total,
+        amount_paid: item.total,
         razorpay_payment_id: razorpayPaymentId,
+        payment_order_id: order.id,
+        created_by: order.customer_id,
       })
-      .eq("id", booking.id);
+      .select("id")
+      .single();
 
-    if (updateError) {
+    if (bookingError || !booking) {
       console.error(
-        "settlePayment: could not confirm booking",
-        booking.id,
-        updateError.message
+        "settlePayment: could not create booking",
+        order.id,
+        bookingError?.message
       );
+      continue;
+    }
+
+    firstBookingId ??= booking.id;
+
+    // Prices come from the snapshot, so a vehicle repriced mid-payment can't
+    // make the booking disagree with what was charged.
+    const { error: vehicleError } = await supabase
+      .from("booking_vehicles")
+      .insert({
+        booking_id: booking.id,
+        vehicle_id: item.vehicleId,
+        price_per_day: item.pricePerDay,
+        security_deposit: item.deposit,
+        tax: 0,
+      });
+
+    if (vehicleError) {
+      console.error(
+        "settlePayment: could not attach vehicle",
+        booking.id,
+        vehicleError.message
+      );
+    }
+  }
+
+  // Gear is hired for the trip rather than per bike, so it hangs off the
+  // first booking.
+  if (firstBookingId && snapshot.gear.length > 0) {
+    for (const gear of snapshot.gear) {
+      const { error: gearError } = await supabase.from("booking_gears").insert({
+        booking_id: firstBookingId,
+        gear_id: gear.gearId,
+        // booking_gears caps quantity at 2; clamp rather than lose the whole
+        // settlement over an add-on.
+        quantity: Math.min(gear.quantity, 2),
+        price_per_day: gear.pricePerDay,
+      });
+
+      if (gearError) {
+        console.error("settlePayment: could not attach gear", gearError.message);
+      }
     }
   }
 

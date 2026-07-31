@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCartSummary } from "@/lib/cart";
 import { getOwnProfile } from "@/lib/profile";
 import { createRazorpayOrder, verifyCheckoutSignature } from "@/lib/razorpay";
-import { settlePayment } from "@/lib/settle-payment";
+import { settlePayment, type CartSnapshot } from "@/lib/settle-payment";
 import { isVehicleAvailable } from "@/lib/vehicles";
 import { createClient } from "@/utils/supabase/server";
 
@@ -94,97 +94,44 @@ export async function startCheckout(): Promise<StartCheckoutResult> {
     return { ok: false, error: "Could not start the payment. Please try again." };
   }
 
+  // No bookings are written here. A rider who opens Razorpay and backs out
+  // must leave nothing behind, so what they're buying is snapshotted onto the
+  // order and turned into bookings only once the payment is confirmed.
+  //
+  // Prices are captured now rather than re-read later, so a mid-payment price
+  // change can't make the rider's booking disagree with what they were
+  // charged.
+  const snapshot: CartSnapshot = {
+    items: cart.items.map((item) => ({
+      vehicleId: item.vehicleId,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      location: item.location,
+      pricePerDay: item.pricePerDay,
+      deposit: item.securityDeposit ?? 0,
+      total: item.subtotal + (item.securityDeposit ?? 0),
+    })),
+    gear: cart.gear.map((gear) => ({
+      gearId: gear.gearId,
+      quantity: gear.quantity,
+      pricePerDay: gear.pricePerDay,
+    })),
+  };
+
   // Written as the signed-in user, so RLS pins customer_id to them.
-  const { data: paymentOrder, error: orderError } = await supabase
-    .from("payment_orders")
-    .insert({
-      customer_id: user.id,
-      razorpay_order_id: order.id,
-      amount: cart.total,
-      coupon_id: null,
-      discount: cart.discount,
-      deposit_total: cart.depositTotal,
-    })
-    .select("id")
-    .single();
+  const { error: orderError } = await supabase.from("payment_orders").insert({
+    customer_id: user.id,
+    razorpay_order_id: order.id,
+    amount: cart.total,
+    coupon_id: null,
+    discount: cart.discount,
+    deposit_total: cart.depositTotal,
+    cart_snapshot: snapshot,
+  });
 
-  if (orderError || !paymentOrder) {
-    console.error("startCheckout: could not save order", orderError?.message);
+  if (orderError) {
+    console.error("startCheckout: could not save order", orderError.message);
     return { ok: false, error: "Could not start the payment. Please try again." };
-  }
-
-  // One booking per cart line: each keeps its own dates and route, and they
-  // all point at the single payment. Created as pending/unpaid — only a
-  // verified payment moves them to confirmed.
-  for (const item of cart.items) {
-    const deposit = item.securityDeposit ?? 0;
-    const { data: booking, error: bookingError } = await supabase
-      .from("bookings")
-      .insert({
-        customer_id: user.id,
-        status: "pending",
-        payment_status: "unpaid",
-        start_date: item.startDate,
-        end_date: item.endDate,
-        location: item.location,
-        total_amount: item.subtotal + deposit,
-        discount_amount: 0,
-        payment_order_id: paymentOrder.id,
-        created_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (bookingError || !booking) {
-      console.error("startCheckout: booking failed", bookingError?.message);
-      return { ok: false, error: "Could not create your booking." };
-    }
-
-    // Snapshot the price so later edits to the vehicle don't rewrite history.
-    const { error: vehicleError } = await supabase
-      .from("booking_vehicles")
-      .insert({
-        booking_id: booking.id,
-        vehicle_id: item.vehicleId,
-        price_per_day: item.pricePerDay,
-        security_deposit: deposit,
-        tax: 0,
-      });
-
-    if (vehicleError) {
-      console.error("startCheckout: booking vehicle failed", vehicleError.message);
-      return { ok: false, error: "Could not create your booking." };
-    }
-  }
-
-  // Gear rides on the first booking — it's hired for the trip, not per bike.
-  if (cart.gear.length > 0) {
-    const { data: firstBooking } = await supabase
-      .from("bookings")
-      .select("id")
-      .eq("payment_order_id", paymentOrder.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (firstBooking) {
-      for (const gear of cart.gear) {
-        const { error: gearError } = await supabase
-          .from("booking_gears")
-          .insert({
-            booking_id: firstBooking.id,
-            gear_id: gear.gearId,
-            // booking_gears caps quantity at 2; clamp rather than fail the
-            // whole checkout over an add-on.
-            quantity: Math.min(gear.quantity, 2),
-            price_per_day: gear.pricePerDay,
-          });
-
-        if (gearError) {
-          console.error("startCheckout: gear failed", gearError.message);
-        }
-      }
-    }
   }
 
   return {
