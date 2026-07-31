@@ -98,9 +98,7 @@ export default async function RootLayout({
       lang="en-US"
       className={`${heading.variable} ${body.variable} h-full antialiased`}
     >
-      {/* Bottom padding clears the fixed contact bar so it never covers the
-          last of the footer. */}
-      <body className="flex min-h-full flex-col pb-24 sm:pb-28">
+      <body className="flex min-h-full flex-col">
         <SiteHeader isSignedIn={Boolean(user)} cartCount={cartCount} />
         {children}
         <SiteFooter />

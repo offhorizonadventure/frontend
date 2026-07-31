@@ -152,7 +152,10 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:px-8">
+        {/* Extra bottom padding keeps the footer's dark band running behind the
+            fixed contact bar, so it overlays the footer instead of leaving a
+            strip of page background below it. */}
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 pt-6 pb-28 sm:px-6 sm:pb-32 lg:flex-row lg:px-8">
           <p className="order-2 text-xs text-neutral-500 lg:order-1">
             © {year} BRB Expeditions. All rights reserved.
           </p>

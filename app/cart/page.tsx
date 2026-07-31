@@ -180,7 +180,7 @@ export default async function CartPage() {
                 </p>
 
                 <Link
-                  href="/contact"
+                  href="/checkout"
                   className="mt-5 flex items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-bold tracking-wide text-white uppercase transition-colors hover:bg-brand-dark"
                 >
                   Proceed To Booking
