@@ -11,6 +11,8 @@ import {
 const QUICK_LINKS = [
   { label: "Category", href: "/#categories" },
   { label: "Vehicles", href: "/vehicles" },
+  { label: "About Us", href: "/about" },
+  { label: "Blog", href: "/blog" },
   { label: "Find Us", href: "/#find-us" },
   { label: "FAQ", href: "/#faq" },
   { label: "Contact", href: "/contact" },
@@ -152,10 +154,10 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10">
-        {/* Extra bottom padding keeps the footer's dark band running behind the
-            fixed contact bar, so it overlays the footer instead of leaving a
-            strip of page background below it. */}
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 pt-6 pb-28 sm:px-6 sm:pb-32 lg:flex-row lg:px-8">
+        {/* Extra bottom padding on phones keeps the footer's dark band running
+            behind the fixed contact bar. The bar is hidden from md up, so the
+            padding goes with it. */}
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 pt-6 pb-28 sm:px-6 md:pb-6 lg:flex-row lg:px-8">
           <p className="order-2 text-xs text-neutral-500 lg:order-1">
             © {year} BRB Expeditions. All rights reserved.
           </p>

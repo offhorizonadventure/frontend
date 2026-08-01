@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Powers the `prose` classes that style blog post bodies, which arrive as
+   HTML from the editor and carry no classes of their own. */
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #ffffff;

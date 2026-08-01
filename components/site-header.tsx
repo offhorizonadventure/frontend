@@ -18,6 +18,8 @@ import { SUPPORT_PHONE, SUPPORT_PHONE_HREF } from "@/lib/locations";
 const NAV_LINKS = [
   { label: "Category", href: "/#categories" },
   { label: "Bikes", href: "/#bikes" },
+  { label: "About", href: "/about" },
+  { label: "Blog", href: "/blog" },
   { label: "Find Us", href: "/#find-us" },
   { label: "FAQ", href: "/#faq" },
   { label: "Contact", href: "/contact" },

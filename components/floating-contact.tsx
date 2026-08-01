@@ -37,7 +37,9 @@ export function FloatingContact() {
     "flex flex-1 flex-col items-center justify-center gap-1 px-3 py-3 text-white transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none sm:px-6";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 sm:bottom-6">
+    // Phones only: on desktop the header already carries a phone number and a
+    // CTA, so a floating bar would just cover content.
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 md:hidden">
       <nav
         aria-label="Contact us"
         className="pointer-events-auto w-full max-w-sm overflow-hidden rounded-2xl bg-brand shadow-xl shadow-black/20 sm:max-w-md"
