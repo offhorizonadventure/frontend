@@ -1,28 +1,58 @@
 # TLS is automatic: Caddy requests a Let's Encrypt certificate on first start
-# and renews it in the background. Port 80 is redirected to 443 for you.
+# and renews it in the background. Port 80 is redirected to 443 for you, and
+# HTTP/3 is on by default.
+
+{
+	# Where Let's Encrypt sends expiry warnings if renewal ever fails.
+	email {$ACME_EMAIL}
+
+	servers {
+		# Don't trust forwarded client-IP headers: nothing sits in front of
+		# Caddy, so anything claiming to be a proxy header is forged.
+		trusted_proxies static private_ranges
+	}
+}
+
+# Send www to the bare domain so a page is never indexed at two addresses.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
 
 {$DOMAIN} {
+	# zstd first — better ratio than gzip for clients that support it.
 	encode zstd gzip
 
 	# `web` resolves over the compose network — the app is never exposed on a
 	# host port, so this is the only way in.
-	reverse_proxy web:3000
+	reverse_proxy web:3000 {
+		# Fail fast rather than holding a connection open on a wedged app.
+		transport http {
+			dial_timeout 5s
+		}
+	}
 
 	header {
 		# Tells browsers to use HTTPS for this host for a year. Only safe once
 		# the certificate is working; remove it if you ever need plain HTTP.
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "SAMEORIGIN"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		# Don't advertise the server software.
 		-Server
 	}
+
+	# Nothing here should ever be crawled or fetched from these paths.
+	@hidden path /.git/* /.env /.env.* /docker-compose.yml
+	respond @hidden 404
 
 	log {
 		output file /data/access.log {
 			roll_size 10MB
 			roll_keep 5
 		}
+		# Health checks would otherwise dominate the log.
+		format json
 	}
 }

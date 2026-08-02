@@ -3,6 +3,14 @@
 # Caddy obtains and renews Let's Encrypt certificates on its own, so there is
 # no certbot cron job to forget about.
 
+x-logging: &default-logging
+  # Without this, container logs grow until they fill the disk. A VPS that
+  # runs out of disk fails in confusing ways months after deploy.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   web:
     build:
@@ -14,30 +22,62 @@ services:
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
         NEXT_PUBLIC_RAZORPAY_KEY_ID: ${NEXT_PUBLIC_RAZORPAY_KEY_ID}
     restart: unless-stopped
+    logging: *default-logging
+
     # Deliberately not published to the host: only Caddy can reach the app, so
     # nobody can bypass TLS by hitting the VPS IP on port 3000.
     expose:
       - "3000"
+
     environment:
       NODE_ENV: production
-      # Server-side only. Never prefixed NEXT_PUBLIC_, so they stay out of the
-      # browser bundle and out of the image.
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
       NEXT_PUBLIC_RAZORPAY_KEY_ID: ${NEXT_PUBLIC_RAZORPAY_KEY_ID}
+      # Server-side only. Never prefixed NEXT_PUBLIC_, so they stay out of the
+      # browser bundle and out of the image.
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
+    # --- Hardening -------------------------------------------------------
+    # Stops a process inside the container gaining privileges it wasn't
+    # started with, e.g. through a setuid binary.
+    security_opt:
+      - no-new-privileges:true
+    # The app serves HTTP and talks to Supabase. It needs no kernel
+    # capabilities at all, so drop the lot.
+    cap_drop:
+      - ALL
+    # An attacker who gets code execution can't modify the app on disk.
+    read_only: true
+    tmpfs:
+      # Next writes rendered pages here for the routes using `revalidate`.
+      # In memory, so it's fast and disappears on restart.
+      - /app/.next/cache:size=256m
+      - /tmp:size=64m
+
+    # Caps the blast radius of a runaway render or a memory leak: the
+    # container is restarted rather than the whole VPS swapping to death.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
     networks:
       - web
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
+      # HTTP/3 runs over UDP. Faster on poor mobile connections, which is most
+      # of your traffic in the mountains.
+      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Certificates persist across restarts. Without this Caddy re-issues on
@@ -46,6 +86,9 @@ services:
       - caddy_config:/config
     environment:
       DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       - web
     networks:

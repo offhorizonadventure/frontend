@@ -14,7 +14,12 @@ RUN corepack enable
 # Copied on their own so this layer is cached until the lockfile changes —
 # editing a component doesn't reinstall every package.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
-RUN pnpm install --frozen-lockfile
+
+# The cache mount keeps pnpm's store between builds. It lives outside the
+# image, so repeat builds go from minutes to seconds without adding a layer.
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    pnpm config set store-dir /pnpm-store \
+    && pnpm install --frozen-lockfile --prefer-offline
 
 # ---------------------------------------------------------------------------
 # 2. Build
@@ -44,8 +49,11 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_RAZORPAY_KEY_ID=$NEXT_PUBLIC_RAZORPAY_KEY_ID
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
-RUN pnpm build
+# Turbopack's cache also survives between builds via a cache mount.
+RUN --mount=type=cache,id=next-cache,target=/app/.next/cache \
+    pnpm build
 
 # ---------------------------------------------------------------------------
 # 3. Runtime
