@@ -42,9 +42,9 @@ const LOCATIONS = [
  */
 function LocationsMenu() {
   const [open, setOpen] = React.useState(false);
-  // Which city's flyout is showing. Defaults to the first, so the panel never
-  // looks half-empty when it opens.
-  const [activeCity, setActiveCity] = React.useState<string>(LOCATIONS[0].slug);
+  // Null until a city row is actually hovered or focused — the flyout should
+  // never appear on its own.
+  const [activeCity, setActiveCity] = React.useState<string | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -66,20 +66,24 @@ function LocationsMenu() {
   }, [open]);
 
   return (
+    // Click to open, not hover: a hover trigger fires whenever the cursor
+    // merely passes near the label on its way elsewhere.
     <div
       ref={ref}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
           setOpen(false);
+          setActiveCity(null);
         }
       }}
       className="relative"
     >
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => !value);
+          setActiveCity(null);
+        }}
         aria-expanded={open}
         aria-haspopup="true"
         className="flex items-center gap-1 text-sm font-medium text-neutral-200 transition-colors hover:text-brand"
@@ -98,7 +102,12 @@ function LocationsMenu() {
             : "pointer-events-none -translate-y-1 opacity-0"
         }`}
       >
-        <ul className="w-56 rounded-xl border border-neutral-200 bg-white p-2 shadow-xl">
+        {/* Leaving the panel entirely closes any open flyout; moving between
+            rows just swaps which one is showing. */}
+        <ul
+          onMouseLeave={() => setActiveCity(null)}
+          className="w-56 rounded-xl border border-neutral-200 bg-white p-2 shadow-xl"
+        >
           {LOCATIONS.map((location) => (
             <li
               key={location.slug}
