@@ -71,12 +71,6 @@ export async function Hero() {
         <div className="absolute inset-0 bg-white/90" />
       </div>
 
-      {/* Soft brand glow behind the bike for depth. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 right-0 hidden size-[38rem] -translate-y-1/2 translate-x-1/4 rounded-full bg-brand/10 blur-3xl lg:block"
-      />
-
       <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-10 lg:py-12 lg:px-8">
         <div className="flex flex-col items-start gap-5">
           <span
