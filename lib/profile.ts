@@ -5,7 +5,10 @@ import { createClient } from "@/utils/supabase/server";
 export type Profile = {
   id: string;
   name: string;
-  mobile: string;
+  /** Login identity. Mirrored from auth.users by a trigger. */
+  email: string | null;
+  /** Contact detail only — optional, and never used to authenticate. */
+  mobile: string | null;
   verified: boolean;
   total_bookings: number;
 };
@@ -18,7 +21,7 @@ export async function getOwnProfile(userId: string): Promise<Profile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, mobile, verified, total_bookings")
+    .select("id, name, email, mobile, verified, total_bookings")
     .eq("id", userId)
     .maybeSingle();
 

@@ -37,7 +37,8 @@ export default async function EditProfilePage() {
           <ProfileForm
             userId={user.id}
             initialName={profile.name}
-            mobile={profile.mobile}
+            initialMobile={profile.mobile ?? ""}
+            email={profile.email ?? user.email ?? ""}
           />
         </div>
       </div>

@@ -1,365 +1,376 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Loader2, Phone, ShieldCheck, UserRound } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  Phone,
+  UserRound,
+} from "lucide-react";
 
 import { createClient } from "@/utils/supabase/client";
-import {
-  COUNTRY_CODES,
-  DEFAULT_COUNTRY,
-  normaliseLocalNumber,
-  toE164,
-} from "@/lib/country-codes";
 
-const OTP_LENGTH = 6;
-const RESEND_SECONDS = 30;
+type Mode = "signin" | "signup";
+
+/** Only used to catch typos early; the real check is Supabase's. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD = 8;
+
+/** Keeps the post-login redirect on this site — an open redirect otherwise. */
+function safeNext(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/profile";
+  }
+  return value;
+}
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = React.useMemo(() => createClient(), []);
 
-  const [step, setStep] = React.useState<"phone" | "otp" | "profile">("phone");
-  const [dial, setDial] = React.useState(DEFAULT_COUNTRY.dial);
-  const [localNumber, setLocalNumber] = React.useState("");
-  const [otp, setOtp] = React.useState("");
+  const next = safeNext(searchParams.get("next"));
+  const [mode, setMode] = React.useState<Mode>("signin");
+
   const [name, setName] = React.useState("");
-  const [userId, setUserId] = React.useState<string | null>(null);
+  const [email, setEmail] = React.useState("");
+  const [mobile, setMobile] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [showPassword, setShowPassword] = React.useState(false);
+
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [resendIn, setResendIn] = React.useState(0);
+  const [notice, setNotice] = React.useState<string | null>(null);
 
-  const phone = toE164(dial, localNumber);
-  const digits = normaliseLocalNumber(localNumber);
-
-  // Resend cooldown
-  React.useEffect(() => {
-    if (resendIn <= 0) return;
-    const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [resendIn]);
-
-  async function sendOtp(e?: React.FormEvent) {
-    e?.preventDefault();
+  function switchMode(nextMode: Mode) {
+    setMode(nextMode);
     setError(null);
-
-    if (digits.length < 6) {
-      setError("Enter a valid phone number.");
-      return;
-    }
-
-    setPending(true);
-    // Mirrors the admin createUser() call in the backend: the same metadata
-    // keys feed handle_new_user(), so a rider signing up here gets the same
-    // profile shape as one created from the dashboard. `data` is only applied
-    // when the auth user is first created.
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      phone,
-      options: {
-        data: { mobile: phone, role: "customer" },
-      },
-    });
-    setPending(false);
-
-    if (otpError) {
-      setError(otpError.message);
-      return;
-    }
-
-    setStep("otp");
-    setResendIn(RESEND_SECONDS);
+    setNotice(null);
+    setPassword("");
   }
 
-  async function verifyOtp(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
+    setNotice(null);
 
-    if (otp.length !== OTP_LENGTH) {
-      setError(`Enter the ${OTP_LENGTH}-digit code.`);
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setError("Enter a valid email address.");
       return;
     }
 
-    setPending(true);
-    const { data, error: verifyError } = await supabase.auth.verifyOtp({
-      phone,
-      token: otp,
-      type: "sms",
-    });
-
-    if (verifyError) {
-      setPending(false);
-      setError(verifyError.message);
+    if (password.length < MIN_PASSWORD) {
+      setError(`Password must be at least ${MIN_PASSWORD} characters.`);
       return;
     }
 
-    // First-time riders land here with an empty profile name (created by the
-    // handle_new_user trigger), so ask for it before sending them on.
-    const signedInId = data.user?.id ?? null;
-    if (signedInId) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", signedInId)
-        .maybeSingle();
+    if (mode === "signup") {
+      if (!name.trim()) {
+        setError("Please enter your name.");
+        return;
+      }
 
-      if (!profile?.name) {
-        setUserId(signedInId);
-        setPending(false);
-        setStep("profile");
+      // Needed to reach the rider about a booking. Loose on format — riders
+      // write numbers every which way, and this isn't a credential, so a
+      // rejected sign-up over a space or a dash would be pure friction.
+      const digits = mobile.replace(/\D/g, "");
+      if (digits.length < 10) {
+        setError("Please enter a valid phone number.");
         return;
       }
     }
 
-    setPending(false);
-    goNext();
-  }
-
-  function goNext() {
-    const next = searchParams.get("next") || "/profile";
-    router.push(next);
-    router.refresh();
-  }
-
-  async function saveName(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    const trimmed = name.trim();
-    if (trimmed.length < 2) {
-      setError("Please enter your full name.");
-      return;
-    }
-    if (!userId) {
-      goNext();
-      return;
-    }
-
     setPending(true);
-    // upsert, not update: handle_new_user() normally creates the row at signup,
-    // but an UPDATE against a missing row affects zero rows and still reports
-    // success — silently losing the name.
-    const { data, error: saveError } = await supabase
-      .from("profiles")
-      .upsert({ id: userId, name: trimmed, mobile: phone }, { onConflict: "id" })
-      .select("id")
-      .maybeSingle();
+
+    if (mode === "signin") {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+
+      setPending(false);
+
+      if (signInError) {
+        // Supabase returns the same message for a wrong password and an
+        // unknown address, which is what we want — it stops the form being
+        // used to discover which emails have accounts.
+        setError("That email or password isn't right.");
+        return;
+      }
+
+      router.push(next);
+      router.refresh();
+      return;
+    }
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: trimmedEmail,
+      password,
+      options: {
+        // Read by the handle_new_user trigger to fill in the profile row. The
+        // phone number is contact detail for the booking, not a credential.
+        data: {
+          name: name.trim(),
+          mobile: mobile.trim(),
+          role: "customer",
+        },
+      },
+    });
+
     setPending(false);
 
-    if (saveError) {
-      setError(saveError.message);
-      return;
-    }
-    if (!data) {
-      setError("Could not save your details. Please try again.");
+    if (signUpError) {
+      setError(
+        signUpError.message.toLowerCase().includes("already")
+          ? "An account with that email already exists. Try signing in."
+          : signUpError.message
+      );
       return;
     }
 
-    goNext();
+    // With email confirmation switched on, Supabase returns a user but no
+    // session — nothing to redirect to until they click the link.
+    if (data.session) {
+      router.push(next);
+      router.refresh();
+      return;
+    }
+
+    setNotice(
+      "Check your inbox to confirm your email address, then sign in."
+    );
+    setMode("signin");
+    setPassword("");
   }
+
+  const field =
+    "w-full rounded-lg border border-neutral-300 py-2.5 pr-3 pl-10 text-sm text-neutral-950 focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none";
 
   return (
-    <div className="w-full max-w-md">
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-brand/10 text-brand">
-            {step === "phone" ? (
-              <Phone className="size-5" aria-hidden="true" />
-            ) : step === "otp" ? (
-              <ShieldCheck className="size-5" aria-hidden="true" />
-            ) : (
-              <UserRound className="size-5" aria-hidden="true" />
-            )}
-          </span>
-          <h1 className="text-2xl font-extrabold tracking-tight text-neutral-950 uppercase italic">
-            {step === "phone" ? (
-              <>
-                Sign <span className="text-brand">In</span>
-              </>
-            ) : step === "otp" ? (
-              <>
-                Verify Your <span className="text-brand">Number</span>
-              </>
-            ) : (
-              <>
-                Almost <span className="text-brand">There</span>
-              </>
-            )}
-          </h1>
-          <p className="text-sm text-neutral-500">
-            {step === "phone"
-              ? "We'll text you a one-time code and no password needed."
-              : step === "otp"
-                ? `Enter the ${OTP_LENGTH}-digit code sent to ${phone}`
-                : "Tell us your name to finish setting up your account."}
-          </p>
-        </div>
-
-        {step === "phone" ? (
-          <form onSubmit={sendOtp} className="mt-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="phone"
-                className="text-sm font-medium text-neutral-800"
-              >
-                Phone number
-              </label>
-              <div className="flex gap-2">
-                <select
-                  aria-label="Country code"
-                  value={dial}
-                  onChange={(e) => setDial(e.target.value)}
-                  disabled={pending}
-                  className="rounded-md border border-neutral-300 bg-white px-2 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
-                >
-                  {COUNTRY_CODES.map((country) => (
-                    <option key={country.iso} value={country.dial}>
-                      {country.dial}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  placeholder="9623300012"
-                  value={localNumber}
-                  onChange={(e) =>
-                    setLocalNumber(normaliseLocalNumber(e.target.value))
-                  }
-                  disabled={pending}
-                  className="flex-1 rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <p role="alert" className="text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={pending}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
-            >
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              Send Code
-            </button>
-          </form>
-        ) : step === "profile" ? (
-          <form onSubmit={saveName} className="mt-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="signup-name"
-                className="text-sm font-medium text-neutral-800"
-              >
-                Full name
-              </label>
-              <input
-                id="signup-name"
-                type="text"
-                autoComplete="name"
-                placeholder="e.g. Niteesh Bharadwaj"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={pending}
-                autoFocus
-                className="rounded-md border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
-              />
-              <p className="text-xs text-neutral-500">
-                Use the name on your ID and it goes on your rental agreement.
-              </p>
-            </div>
-
-            {error && (
-              <p role="alert" className="text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={pending}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
-            >
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              Finish
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verifyOtp} className="mt-6 flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="otp"
-                className="text-sm font-medium text-neutral-800"
-              >
-                Verification code
-              </label>
-              <input
-                id="otp"
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={OTP_LENGTH}
-                placeholder="______"
-                value={otp}
-                onChange={(e) =>
-                  setOtp(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))
-                }
-                disabled={pending}
-                autoFocus
-                className="rounded-md border border-neutral-300 px-3 py-3 text-center text-lg font-semibold tracking-[0.4em] focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none"
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={pending}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:opacity-60"
-            >
-              {pending && <Loader2 className="size-4 animate-spin" />}
-              Verify & Continue
-            </button>
-
-            <div className="flex items-center justify-between text-sm">
-              <button
-                type="button"
-                onClick={() => {
-                  setStep("phone");
-                  setOtp("");
-                  setError(null);
-                }}
-                disabled={pending}
-                className="inline-flex items-center gap-1 text-neutral-500 transition-colors hover:text-neutral-950"
-              >
-                <ArrowLeft className="size-3.5" aria-hidden="true" />
-                Change number
-              </button>
-
-              <button
-                type="button"
-                onClick={() => sendOtp()}
-                disabled={pending || resendIn > 0}
-                className="font-medium text-brand transition-colors hover:text-brand-dark disabled:text-neutral-400"
-              >
-                {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
-              </button>
-            </div>
-          </form>
-        )}
+    <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <span className="flex size-11 items-center justify-center rounded-full bg-brand/10 text-brand">
+          {mode === "signin" ? (
+            <LockKeyhole className="size-5" aria-hidden="true" />
+          ) : (
+            <UserRound className="size-5" aria-hidden="true" />
+          )}
+        </span>
+        <h1 className="text-2xl font-extrabold tracking-tight text-neutral-950 uppercase italic">
+          {mode === "signin" ? (
+            <>
+              Sign <span className="text-brand">In</span>
+            </>
+          ) : (
+            <>
+              Create <span className="text-brand">Account</span>
+            </>
+          )}
+        </h1>
+        <p className="text-sm text-neutral-500">
+          {mode === "signin"
+            ? "Sign in with your email to manage your bookings."
+            : "A few details and you're ready to book."}
+        </p>
       </div>
 
-      <p className="mt-4 text-center text-xs text-neutral-500">
-        By continuing you agree to our terms and privacy policy.
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        {mode === "signup" && (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="name" className="text-sm font-semibold text-neutral-950">
+              Full name
+            </label>
+            <div className="relative">
+              <UserRound
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400"
+                aria-hidden="true"
+              />
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Surya Thakur"
+                className={field}
+                disabled={pending}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="email" className="text-sm font-semibold text-neutral-950">
+            Email
+          </label>
+          <div className="relative">
+            <Mail
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400"
+              aria-hidden="true"
+            />
+            <input
+              id="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={field}
+              disabled={pending}
+            />
+          </div>
+        </div>
+
+        {mode === "signup" && (
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="mobile"
+              className="text-sm font-semibold text-neutral-950"
+            >
+              Phone number
+            </label>
+            <div className="relative">
+              <Phone
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400"
+                aria-hidden="true"
+              />
+              <input
+                id="mobile"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                placeholder="+91 98765 43210"
+                className={field}
+                disabled={pending}
+              />
+            </div>
+            <p className="text-xs text-neutral-500">
+              We need this to reach you about your booking. You still sign in
+              with your email.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="password"
+            className="text-sm font-semibold text-neutral-950"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <LockKeyhole
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400"
+              aria-hidden="true"
+            />
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={
+                mode === "signin" ? "current-password" : "new-password"
+              }
+              required
+              minLength={MIN_PASSWORD}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className={`${field} pr-10`}
+              disabled={pending}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-950"
+            >
+              {showPassword ? (
+                <EyeOff className="size-4" aria-hidden="true" />
+              ) : (
+                <Eye className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          {mode === "signup" && (
+            <p className="text-xs text-neutral-500">
+              At least {MIN_PASSWORD} characters.
+            </p>
+          )}
+        </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700"
+          >
+            <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            {error}
+          </p>
+        )}
+
+        {notice && (
+          <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-xs font-medium text-emerald-800">
+            <Check className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+            {notice}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-bold tracking-wide text-white uppercase transition-colors hover:bg-brand-dark disabled:opacity-60"
+        >
+          {pending && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+          {mode === "signin" ? "Sign In" : "Create Account"}
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-sm text-neutral-600">
+        {mode === "signin" ? (
+          <>
+            New here?{" "}
+            <button
+              type="button"
+              onClick={() => switchMode("signup")}
+              className="font-semibold text-brand transition-colors hover:text-brand-dark"
+            >
+              Create an account
+            </button>
+          </>
+        ) : (
+          <>
+            Already have an account?{" "}
+            <button
+              type="button"
+              onClick={() => switchMode("signin")}
+              className="font-semibold text-brand transition-colors hover:text-brand-dark"
+            >
+              Sign in
+            </button>
+          </>
+        )}
+      </p>
+
+      <p className="mt-4 text-center text-xs text-neutral-400">
+        By continuing you agree to our{" "}
+        <Link href="/contact" className="underline underline-offset-2">
+          terms
+        </Link>
+        .
       </p>
     </div>
   );

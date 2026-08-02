@@ -71,7 +71,8 @@ export default async function CheckoutPage() {
           Secure <span className="text-brand">Checkout</span>
         </h1>
         <p className="mt-1 text-sm text-neutral-600">
-          Booking as {profile.name} · {profile.mobile}
+          Booking as {profile.name}
+          {profile.mobile ? ` · ${profile.mobile}` : ""}
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-8">

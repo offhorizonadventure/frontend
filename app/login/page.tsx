@@ -6,7 +6,7 @@ import { LoginForm } from "@/components/login-form";
 export const metadata: Metadata = {
   title: "Sign In | BRB Expeditions",
   description:
-    "Sign in to BRB Expeditions with your phone number to book bikes and cars in Manali and Bhuntar.",
+    "Sign in or create an account with your email to book bikes and cars in Manali and Bhuntar.",
   // A login screen has nothing useful to index.
   robots: { index: false, follow: true },
 };

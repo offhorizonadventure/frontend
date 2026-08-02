@@ -4,6 +4,7 @@ import {
   BadgeCheck,
   CalendarCheck,
   Clock,
+  Mail,
   Pencil,
   Phone,
   UserRound,
@@ -23,8 +24,9 @@ export default async function ProfilePage() {
   // never a fallback from the auth session.
   const { user, profile } = await requireCompleteProfile("/profile");
 
-  const phoneVerified = Boolean(user.phone_confirmed_at);
-  const displayPhone = profile.mobile || "—";
+  const emailVerified = Boolean(user.email_confirmed_at);
+  const displayEmail = profile.email ?? user.email ?? "—";
+  const displayPhone = profile.mobile || "Not added";
 
   return (
     <main className="flex-1">
@@ -90,20 +92,33 @@ export default async function ProfilePage() {
 
             <div className="flex items-center justify-between gap-4 px-6 py-4">
               <dt className="flex items-center gap-2.5 text-sm text-neutral-600">
+                <Mail
+                  className="size-4 shrink-0 text-neutral-400"
+                  aria-hidden="true"
+                />
+                Email
+              </dt>
+              <dd className="flex items-center gap-2 text-sm font-medium break-all text-neutral-950">
+                {displayEmail}
+                {emailVerified && (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    <BadgeCheck className="size-3" aria-hidden="true" />
+                    Verified
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 px-6 py-4">
+              <dt className="flex items-center gap-2.5 text-sm text-neutral-600">
                 <Phone
                   className="size-4 shrink-0 text-neutral-400"
                   aria-hidden="true"
                 />
                 Phone number
               </dt>
-              <dd className="flex items-center gap-2 text-sm font-medium text-neutral-950">
+              <dd className="text-sm font-medium text-neutral-950">
                 {displayPhone}
-                {phoneVerified && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                    <BadgeCheck className="size-3" aria-hidden="true" />
-                    Verified
-                  </span>
-                )}
               </dd>
             </div>
 
@@ -147,7 +162,7 @@ export default async function ProfilePage() {
           {!profile.verified && (
             <div className="border-t border-neutral-100 p-6">
               <p className="text-sm text-neutral-500">
-                Accounts are verified automatically once your phone number is
+                Accounts are verified automatically once your email address is
                 confirmed. If this still says under review, get in touch and
                 our team will sort it out.
               </p>

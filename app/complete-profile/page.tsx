@@ -48,7 +48,8 @@ export default async function CompleteProfilePage({
             <ProfileForm
               userId={user.id}
               initialName={profile?.name ?? ""}
-              mobile={profile?.mobile || user.phone || ""}
+              initialMobile={profile?.mobile ?? ""}
+              email={profile?.email ?? user.email ?? ""}
               redirectTo={redirectTo}
               submitLabel="Finish"
               onCancel={false}
