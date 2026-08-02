@@ -208,6 +208,25 @@ export function SiteHeader({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // The menu covers the screen, so the page behind it must not scroll —
+  // otherwise closing the menu leaves you somewhere you never navigated to.
+  React.useEffect(() => {
+    if (!menuOpen) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
+
   // Signed out, the account icon goes to login and comes back afterwards.
   const accountHref = isSignedIn ? "/profile" : "/login?next=%2Fprofile";
 
@@ -308,22 +327,41 @@ export function SiteHeader({
           </div>
         </div>
 
-        {/* Mobile nav drawer */}
+        {/* Mobile nav — a full-screen panel rather than a strip under the
+            header. With locations expanded the list is far taller than a phone
+            screen, and a cramped scrolling sliver was hard to use.
+            100dvh, not 100vh: vh ignores mobile browser chrome, so the last
+            item ends up behind the address bar. */}
         <div
           id="mobile-nav"
-          className={`grid transition-[grid-template-rows] duration-300 ease-out lg:hidden ${
-            menuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-          }`}
+          hidden={!menuOpen}
+          className="fixed inset-0 z-50 flex h-[100dvh] flex-col bg-header lg:hidden"
         >
-          {/* The drawer is capped to what's left below the header and scrolls
-              inside itself — with Locations expanded the list is taller than a
-              phone screen, and without this the last links were unreachable.
-              overscroll-contain stops the scroll passing to the page behind. */}
+          {/* Mirrors the header bar so closing feels like closing a layer,
+              not jumping somewhere new. */}
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 px-4">
+            <Link
+              href="/"
+              onClick={() => setMenuOpen(false)}
+              className="text-base font-bold tracking-wide text-white"
+            >
+              BRB <span className="text-brand">EXPEDITIONS</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close menu"
+              className="text-white transition-colors hover:text-brand"
+            >
+              <X className="size-6" aria-hidden="true" />
+            </button>
+          </div>
+
           <nav
             aria-label="Mobile primary"
-            className="max-h-[calc(100dvh-9rem)] overflow-x-hidden overflow-y-auto overscroll-contain border-t border-white/10 px-4"
+            className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4"
           >
-            <div className="flex flex-col gap-1 py-3">
+            <div className="flex flex-col gap-1 py-4">
               <Link
                 href={NAV_LINKS[0].href}
                 onClick={() => setMenuOpen(false)}
@@ -383,15 +421,20 @@ export function SiteHeader({
                   My Bookings
                 </Link>
               )}
-              <Link
-                href="/vehicles"
-                onClick={() => setMenuOpen(false)}
-                className="mt-2 rounded-md bg-brand px-5 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
-              >
-                Book Your Ride
-              </Link>
             </div>
           </nav>
+
+          {/* Pinned, so the main action is reachable without scrolling to the
+              end of the list. pb-safe keeps it clear of the home indicator. */}
+          <div className="shrink-0 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Link
+              href="/vehicles"
+              onClick={() => setMenuOpen(false)}
+              className="block rounded-md bg-brand px-5 py-3 text-center text-sm font-bold tracking-wide text-white uppercase transition-colors hover:bg-brand-dark"
+            >
+              Book Your Ride
+            </Link>
+          </div>
         </div>
       </div>
     </header>
