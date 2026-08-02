@@ -12,7 +12,8 @@ export type BookingStatus =
 export type BookingVehicle = {
   id: string;
   name: string;
-  slug: string;
+  /** Null once the vehicle is gone — there's nothing left to link to. */
+  slug: string | null;
   imageUrl: string | null;
   pricePerDay: number;
   securityDeposit: number;
@@ -55,6 +56,7 @@ type Row = {
   created_at: string;
   booking_vehicles: {
     id: string;
+    vehicle_name: string | null;
     price_per_day: number;
     security_deposit: number;
     vehicles: {
@@ -67,6 +69,7 @@ type Row = {
     id: string;
     quantity: number;
     price_per_day: number;
+    gear_name: string | null;
     gears: { name: string } | null;
   }[];
 };
@@ -87,10 +90,10 @@ export async function getMyBookings(userId: string): Promise<Booking[]> {
       `id, status, payment_status, start_date, end_date, location,
        total_amount, amount_paid, refund_amount, refund_status, created_at,
        booking_vehicles(
-         id, price_per_day, security_deposit,
+         id, vehicle_name, price_per_day, security_deposit,
          vehicles(name, slug, bike_photo_url)
        ),
-       booking_gears(id, quantity, price_per_day, gears(name))`
+       booking_gears(id, quantity, price_per_day, gear_name, gears(name))`
     )
     .eq("customer_id", userId)
     .order("created_at", { ascending: false });
@@ -112,23 +115,21 @@ export async function getMyBookings(userId: string): Promise<Booking[]> {
     refundAmount: row.refund_amount,
     refundStatus: row.refund_status,
     createdAt: row.created_at,
-    vehicles: (row.booking_vehicles ?? [])
-      .filter((bv) => bv.vehicles !== null)
-      .map((bv) => ({
-        id: bv.id,
-        name: bv.vehicles!.name,
-        slug: bv.vehicles!.slug,
-        imageUrl: bv.vehicles!.bike_photo_url,
-        pricePerDay: bv.price_per_day,
-        securityDeposit: bv.security_deposit,
-      })),
-    gear: (row.booking_gears ?? [])
-      .filter((bg) => bg.gears !== null)
-      .map((bg) => ({
-        id: bg.id,
-        name: bg.gears!.name,
-        quantity: bg.quantity,
-        pricePerDay: bg.price_per_day,
-      })),
+    // A vehicle removed from the catalogue leaves the join null, so fall back
+    // to the name snapshotted onto the line when the booking was made.
+    vehicles: (row.booking_vehicles ?? []).map((bv) => ({
+      id: bv.id,
+      name: bv.vehicles?.name ?? bv.vehicle_name ?? "Vehicle",
+      slug: bv.vehicles?.slug ?? null,
+      imageUrl: bv.vehicles?.bike_photo_url ?? null,
+      pricePerDay: bv.price_per_day,
+      securityDeposit: bv.security_deposit,
+    })),
+    gear: (row.booking_gears ?? []).map((bg) => ({
+      id: bg.id,
+      name: bg.gears?.name ?? bg.gear_name ?? "Gear",
+      quantity: bg.quantity,
+      pricePerDay: bg.price_per_day,
+    })),
   }));
 }

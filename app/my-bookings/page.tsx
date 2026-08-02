@@ -76,48 +76,64 @@ function BookingCard({ booking }: { booking: Booking }) {
       </div>
 
       <div className="flex flex-col gap-4 p-5">
-        {booking.vehicles.map((vehicle) => (
-          <div key={vehicle.id} className="flex gap-4">
-            <Link
-              href={`/vehicles/${vehicle.slug}`}
-              className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50"
-            >
-              {vehicle.imageUrl ? (
-                <Image
-                  src={vehicle.imageUrl}
-                  alt={vehicle.name}
-                  fill
-                  sizes="80px"
-                  unoptimized
-                  className="object-contain p-2"
-                />
-              ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-neutral-300">
-                  <ImageIcon className="size-6" aria-hidden="true" />
-                </span>
-              )}
-            </Link>
+        {booking.vehicles.map((vehicle) => {
+          // The vehicle may since have been removed from the catalogue, in
+          // which case there's no page left to link to — the booking still
+          // shows the name it was made under.
+          const thumbClass =
+            "relative size-20 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50";
+          const thumb = vehicle.imageUrl ? (
+            <Image
+              src={vehicle.imageUrl}
+              alt={vehicle.name}
+              fill
+              sizes="80px"
+              unoptimized
+              className="object-contain p-2"
+            />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center text-neutral-300">
+              <ImageIcon className="size-6" aria-hidden="true" />
+            </span>
+          );
 
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <Link
-                href={`/vehicles/${vehicle.slug}`}
-                className="text-sm font-semibold text-neutral-950 transition-colors hover:text-brand sm:text-base"
-              >
-                {vehicle.name}
-              </Link>
-              <p className="flex items-center gap-1.5 text-xs text-neutral-500">
-                <CalendarDays className="size-3.5" aria-hidden="true" />
-                {formatDate(booking.startDate)} – {formatDate(booking.endDate)}
-              </p>
-              {booking.location && (
-                <p className="flex items-center gap-1.5 text-xs text-neutral-500">
-                  <MapPin className="size-3.5" aria-hidden="true" />
-                  {booking.location}
-                </p>
+          return (
+            <div key={vehicle.id} className="flex gap-4">
+              {vehicle.slug ? (
+                <Link href={`/vehicles/${vehicle.slug}`} className={thumbClass}>
+                  {thumb}
+                </Link>
+              ) : (
+                <div className={thumbClass}>{thumb}</div>
               )}
+
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                {vehicle.slug ? (
+                  <Link
+                    href={`/vehicles/${vehicle.slug}`}
+                    className="text-sm font-semibold text-neutral-950 transition-colors hover:text-brand sm:text-base"
+                  >
+                    {vehicle.name}
+                  </Link>
+                ) : (
+                  <span className="text-sm font-semibold text-neutral-950 sm:text-base">
+                    {vehicle.name}
+                  </span>
+                )}
+                <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+                  <CalendarDays className="size-3.5" aria-hidden="true" />
+                  {formatDate(booking.startDate)} – {formatDate(booking.endDate)}
+                </p>
+                {booking.location && (
+                  <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+                    <MapPin className="size-3.5" aria-hidden="true" />
+                    {booking.location}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {booking.gear.length > 0 && (
           <div className="flex flex-wrap gap-1.5 border-t border-neutral-100 pt-3">

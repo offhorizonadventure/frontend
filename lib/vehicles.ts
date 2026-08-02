@@ -383,6 +383,58 @@ export async function getVehiclesByCategoryName(
 }
 
 /**
+ * Featured vehicles in a category, falling back to the whole category.
+ *
+ * The city category pages are meant to showcase a curated pick, but a page
+ * that renders nothing because nobody has ticked "featured" yet is worse than
+ * one showing the full range — so an empty featured set falls through.
+ */
+export async function getShowcaseVehiclesByCategory(
+  categoryName: string,
+  limit = 8
+): Promise<{ vehicles: VehicleListItem[]; curated: boolean }> {
+  const supabase = await createClient();
+
+  const select = `id, name, slug, price_per_day, bike_photo_url, fuel_level, subcategory_id,
+     vehicle_subcategories!inner(
+       id, name, vehicle_categories!inner(id, name)
+     )`;
+
+  const { data: featured } = await supabase
+    .from("vehicles")
+    .select(select)
+    .ilike("vehicle_subcategories.vehicle_categories.name", categoryName)
+    .eq("is_featured", true)
+    .order("price_per_day", { ascending: true })
+    .limit(limit);
+
+  const curatedRows = ((featured ?? []) as unknown as VehicleRow[]).map(
+    toListItem
+  );
+
+  if (curatedRows.length > 0) {
+    return { vehicles: curatedRows, curated: true };
+  }
+
+  const { data: all, error } = await supabase
+    .from("vehicles")
+    .select(select)
+    .ilike("vehicle_subcategories.vehicle_categories.name", categoryName)
+    .order("price_per_day", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error(`Failed to load ${categoryName} vehicles:`, error.message);
+    return { vehicles: [], curated: false };
+  }
+
+  return {
+    vehicles: ((all ?? []) as unknown as VehicleRow[]).map(toListItem),
+    curated: false,
+  };
+}
+
+/**
  * Whether a vehicle is free for a range. Server-side only — never trust an
  * availability answer computed in the browser.
  */

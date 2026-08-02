@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getAllBlogSlugs } from "@/lib/blog";
+import { CITY_CATEGORIES, categoryPath } from "@/lib/city-content";
 
 const SITE_URL = "https://www.bikerentalsbhuntar.com";
 
@@ -23,10 +24,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/contact`, changeFrequency: "monthly", priority: 0.6 },
   ];
 
+  // The per-city category pages: /manali/bike-rental-in-manali and friends.
+  const cityCategoryRoutes: MetadataRoute.Sitemap = ["manali", "bhuntar"].flatMap(
+    (city) =>
+      CITY_CATEGORIES.map((category) => ({
+        url: `${SITE_URL}${categoryPath(city, category.key)}`,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      }))
+  );
+
   const posts = await getAllBlogSlugs();
 
   return [
     ...staticRoutes,
+    ...cityCategoryRoutes,
     ...posts.map((post) => ({
       url: `${SITE_URL}/blog/${post.slug}`,
       lastModified: new Date(post.updatedAt),

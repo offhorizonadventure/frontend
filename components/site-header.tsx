@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { useState } from "react";
 import {
+  ChevronDown,
+  ChevronRight,
   MapPin,
   Menu,
   Phone,
@@ -12,18 +15,152 @@ import {
   X,
 } from "lucide-react";
 
+import { CITY_CATEGORIES, categoryPath } from "@/lib/city-content";
 import { SUPPORT_PHONE, SUPPORT_PHONE_HREF } from "@/lib/locations";
 
 // Homepage sections are linked by anchor; Contact is its own page.
 const NAV_LINKS = [
   { label: "Category", href: "/#categories" },
-  { label: "Bikes", href: "/#bikes" },
   { label: "About", href: "/about" },
   { label: "Blog", href: "/blog" },
   { label: "Find Us", href: "/#find-us" },
   { label: "FAQ", href: "/#faq" },
   { label: "Contact", href: "/contact" },
 ] as const;
+
+const LOCATIONS = [
+  { slug: "manali", label: "Manali" },
+  { slug: "bhuntar", label: "Bhuntar" },
+] as const;
+
+/**
+ * Locations menu.
+ *
+ * Opens on hover for pointers and on click for touch — hover alone leaves it
+ * unusable on a phone. The trigger is a real link to /vehicles too, so the
+ * menu is never a dead end for anyone navigating by keyboard.
+ */
+function LocationsMenu() {
+  const [open, setOpen] = React.useState(false);
+  // Which city's flyout is showing. Defaults to the first, so the panel never
+  // looks half-empty when it opens.
+  const [activeCity, setActiveCity] = React.useState<string>(LOCATIONS[0].slug);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    function onPointerDown(event: PointerEvent) {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={ref}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+          setOpen(false);
+        }
+      }}
+      className="relative"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="flex items-center gap-1 text-sm font-medium text-neutral-200 transition-colors hover:text-brand"
+      >
+        Locations
+        <ChevronDown
+          className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
+      </button>
+
+      <div
+        className={`absolute top-full left-0 z-50 pt-3 transition-all ${
+          open
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0"
+        }`}
+      >
+        <ul className="w-56 rounded-xl border border-neutral-200 bg-white p-2 shadow-xl">
+          {LOCATIONS.map((location) => (
+            <li
+              key={location.slug}
+              // Each city owns its own flyout, opened by hovering or focusing
+              // anywhere within this row.
+              onMouseEnter={() => setActiveCity(location.slug)}
+              onFocus={() => setActiveCity(location.slug)}
+              className="relative"
+            >
+              <Link
+                href={`/${location.slug}`}
+                onClick={() => setOpen(false)}
+                tabIndex={open ? 0 : -1}
+                aria-haspopup="true"
+                aria-expanded={activeCity === location.slug}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+                  activeCity === location.slug
+                    ? "bg-neutral-50 text-brand"
+                    : "text-neutral-950 hover:bg-neutral-50 hover:text-brand"
+                }`}
+              >
+                <MapPin className="size-4 text-brand" aria-hidden="true" />
+                {location.label}
+                <ChevronRight
+                  className="ml-auto size-3.5 text-neutral-400"
+                  aria-hidden="true"
+                />
+              </Link>
+
+              {/* Flyout — sits to the right of the row, not beneath it. */}
+              <ul
+                className={`absolute top-0 left-full w-60 rounded-xl border border-neutral-200 bg-white p-2 shadow-xl transition-all ${
+                  activeCity === location.slug
+                    ? "pointer-events-auto translate-x-0 opacity-100"
+                    : "pointer-events-none -translate-x-1 opacity-0"
+                }`}
+              >
+                <li className="px-3 pt-1 pb-2 text-[11px] font-bold tracking-wide text-neutral-400 uppercase">
+                  {location.label} Rentals
+                </li>
+                {CITY_CATEGORIES.map((category) => (
+                  <li key={category.key}>
+                    <Link
+                      href={categoryPath(location.slug, category.key)}
+                      onClick={() => setOpen(false)}
+                      tabIndex={
+                        open && activeCity === location.slug ? 0 : -1
+                      }
+                      className="block rounded-lg px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 hover:text-brand"
+                    >
+                      {category.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 function TopBar() {
   return (
@@ -98,7 +235,16 @@ export function SiteHeader({
             </button>
 
             <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
-              {NAV_LINKS.map((link) => (
+              <Link
+                href={NAV_LINKS[0].href}
+                className="text-sm font-medium text-neutral-200 transition-colors hover:text-brand"
+              >
+                {NAV_LINKS[0].label}
+              </Link>
+
+              <LocationsMenu />
+
+              {NAV_LINKS.slice(1).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -169,12 +315,49 @@ export function SiteHeader({
             menuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
           }`}
         >
+          {/* The drawer is capped to what's left below the header and scrolls
+              inside itself — with Locations expanded the list is taller than a
+              phone screen, and without this the last links were unreachable.
+              overscroll-contain stops the scroll passing to the page behind. */}
           <nav
             aria-label="Mobile primary"
-            className="overflow-hidden border-t border-white/10 px-4"
+            className="max-h-[calc(100dvh-9rem)] overflow-x-hidden overflow-y-auto overscroll-contain border-t border-white/10 px-4"
           >
             <div className="flex flex-col gap-1 py-3">
-              {NAV_LINKS.map((link) => (
+              <Link
+                href={NAV_LINKS[0].href}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-md px-2 py-2.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/5 hover:text-brand"
+              >
+                {NAV_LINKS[0].label}
+              </Link>
+
+              {/* Locations, expanded inline — a nested dropdown inside a
+                  drawer is fiddly on a phone, so the links are just listed. */}
+              {LOCATIONS.map((location) => (
+                <div key={location.slug} className="flex flex-col">
+                  <Link
+                    href={`/${location.slug}`}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/5 hover:text-brand"
+                  >
+                    <MapPin className="size-3.5 text-brand" aria-hidden="true" />
+                    {location.label}
+                  </Link>
+                  {CITY_CATEGORIES.map((category) => (
+                    <Link
+                      key={category.key}
+                      href={categoryPath(location.slug, category.key)}
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded-md py-2 pr-2 pl-9 text-sm text-neutral-400 transition-colors hover:bg-white/5 hover:text-brand"
+                    >
+                      {category.label}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+
+              {NAV_LINKS.slice(1).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

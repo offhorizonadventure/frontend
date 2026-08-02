@@ -7,6 +7,52 @@
  * Bhuntar stay visually consistent; only the text differs.
  */
 
+/**
+ * The three rental categories each city page links out to.
+ *
+ * `categoryName` must match the name in vehicle_categories exactly — that's
+ * how vehicles are looked up. `key` builds the URL.
+ */
+export const CITY_CATEGORIES = [
+  {
+    key: "bike",
+    categoryName: "Bike",
+    label: "Bike Rental",
+    blurb:
+      "Himalayan-ready motorcycles, serviced before every trip and built for high passes.",
+  },
+  {
+    key: "car",
+    categoryName: "Car",
+    label: "Car Rental",
+    blurb:
+      "Self-drive cars and 4×4s for families, rough terrain and long highway days.",
+  },
+  {
+    key: "scooter",
+    categoryName: "Scooter",
+    label: "Scooter Rental",
+    blurb:
+      "Light, easy and automatic — ideal for short valley runs and town riding.",
+  },
+] as const;
+
+export type CityCategory = (typeof CITY_CATEGORIES)[number];
+
+/** e.g. /manali/bike-rental-in-manali */
+export function categoryPath(citySlug: string, key: string) {
+  return `/${citySlug}/${key}-rental-in-${citySlug}`;
+}
+
+/** Reverses categoryPath, so the route can validate the slug it was given. */
+export function parseCategorySlug(citySlug: string, slug: string) {
+  return (
+    CITY_CATEGORIES.find(
+      (category) => `${category.key}-rental-in-${citySlug}` === slug
+    ) ?? null
+  );
+}
+
 export type PriceRow = { label: string; price: string };
 
 export type RouteDetail = {

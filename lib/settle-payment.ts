@@ -144,6 +144,40 @@ export async function settlePayment({
 
   let firstBookingId: string | null = null;
 
+  // Names for the booking-line snapshots, so a line still reads correctly if
+  // the vehicle or gear is later removed from the catalogue.
+  const [{ data: vehicleRows }, { data: gearRows }] = await Promise.all([
+    supabase
+      .from("vehicles")
+      .select("id, name")
+      .in(
+        "id",
+        snapshot.items.map((item) => item.vehicleId)
+      ),
+    snapshot.gear.length > 0
+      ? supabase
+          .from("gears")
+          .select("id, name")
+          .in(
+            "id",
+            snapshot.gear.map((gear) => gear.gearId)
+          )
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
+
+  const vehicleNames = new Map(
+    ((vehicleRows ?? []) as { id: string; name: string }[]).map((row) => [
+      row.id,
+      row.name,
+    ])
+  );
+  const gearNames = new Map(
+    ((gearRows ?? []) as { id: string; name: string }[]).map((row) => [
+      row.id,
+      row.name,
+    ])
+  );
+
   for (const item of snapshot.items) {
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
@@ -181,6 +215,7 @@ export async function settlePayment({
       .insert({
         booking_id: booking.id,
         vehicle_id: item.vehicleId,
+        vehicle_name: vehicleNames.get(item.vehicleId) ?? null,
         price_per_day: item.pricePerDay,
         security_deposit: item.deposit,
         tax: 0,
@@ -202,6 +237,7 @@ export async function settlePayment({
       const { error: gearError } = await supabase.from("booking_gears").insert({
         booking_id: firstBookingId,
         gear_id: gear.gearId,
+        gear_name: gearNames.get(gear.gearId) ?? null,
         // booking_gears caps quantity at 2; clamp rather than lose the whole
         // settlement over an add-on.
         quantity: Math.min(gear.quantity, 2),
