@@ -1,0 +1,36 @@
+# Compose file for a VPS running CloudPanel.
+#
+# CloudPanel already owns ports 80 and 443 with its own Nginx, and issues
+# Let's Encrypt certificates through its UI — so there is no Caddy here. The
+# app runs on localhost and CloudPanel reverse-proxies a site to it.
+#
+#   docker compose -f docker-compose.cloudpanel.yml up -d --build
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        # Inlined into the client bundle at build time, so a change here needs
+        # a rebuild rather than a restart.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_RAZORPAY_KEY_ID: ${NEXT_PUBLIC_RAZORPAY_KEY_ID}
+    restart: unless-stopped
+    # Bound to 127.0.0.1 on purpose. "3000:3000" would publish the app on the
+    # VPS's public IP, letting anyone reach it over plain HTTP and skip both
+    # CloudPanel's TLS and its access rules. The loopback bind means only
+    # Nginx on this machine can reach it.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: ${NEXT_PUBLIC_RAZORPAY_KEY_ID}
+      # Server-side only — never given a NEXT_PUBLIC_ prefix, and passed at
+      # runtime rather than as build args so they stay out of the image.
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}

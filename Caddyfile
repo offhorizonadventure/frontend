@@ -1,0 +1,28 @@
+# TLS is automatic: Caddy requests a Let's Encrypt certificate on first start
+# and renews it in the background. Port 80 is redirected to 443 for you.
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# `web` resolves over the compose network — the app is never exposed on a
+	# host port, so this is the only way in.
+	reverse_proxy web:3000
+
+	header {
+		# Tells browsers to use HTTPS for this host for a year. Only safe once
+		# the certificate is working; remove it if you ever need plain HTTP.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Don't advertise the server software.
+		-Server
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+	}
+}

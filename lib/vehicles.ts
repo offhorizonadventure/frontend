@@ -357,9 +357,19 @@ export async function getVehiclesByCategoryName(
 ): Promise<VehicleListItem[]> {
   const supabase = await createClient();
 
+  // Both joins must be !inner. A filter on an embedded resource only narrows
+  // the outer rows when the join is inner — on a normal join PostgREST returns
+  // every vehicle and just nulls the embedded category. That matters because
+  // LIMIT is applied in the database: filtering afterwards in JavaScript would
+  // be filtering the wrong four rows.
   const { data, error } = await supabase
     .from("vehicles")
-    .select(VEHICLE_SELECT)
+    .select(
+      `id, name, slug, price_per_day, bike_photo_url, fuel_level, subcategory_id,
+       vehicle_subcategories!inner(
+         id, name, vehicle_categories!inner(id, name)
+       )`
+    )
     .ilike("vehicle_subcategories.vehicle_categories.name", categoryName)
     .order("price_per_day", { ascending: true })
     .limit(limit);
@@ -369,15 +379,7 @@ export async function getVehiclesByCategoryName(
     return [];
   }
 
-  // The nested filter above narrows the join, not the outer rows, so vehicles
-  // in other categories come back with a null category — drop those here.
-  return ((data ?? []) as unknown as VehicleRow[])
-    .filter(
-      (row) =>
-        row.vehicle_subcategories?.vehicle_categories?.name?.toLowerCase() ===
-        categoryName.toLowerCase()
-    )
-    .map(toListItem);
+  return ((data ?? []) as unknown as VehicleRow[]).map(toListItem);
 }
 
 /**
