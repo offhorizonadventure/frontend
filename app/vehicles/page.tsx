@@ -52,8 +52,8 @@ const TRUST_POINTS = [
   },
   {
     icon: RefreshCcw,
-    title: "Easy Cancellation",
-    description: "Refunded via Razorpay",
+    title: "Cancellations",
+    description: "Handled by our team",
   },
   {
     icon: ReceiptText,
@@ -270,11 +270,7 @@ export default async function VehiclesPage({
               >
                 {vehicles.map((vehicle) => (
                   <li key={vehicle.id}>
-                    <VehicleCard
-                      vehicle={vehicle}
-                      view={view}
-                      showAvailable={hasDateRange}
-                    />
+                    <VehicleCard vehicle={vehicle} view={view} />
                   </li>
                 ))}
               </ul>

@@ -20,8 +20,8 @@ import { LOCATIONS } from "@/lib/cart-constants";
 const ASSURANCES = [
   {
     icon: RefreshCcw,
-    title: "Free Cancellation",
-    description: "Cancel any time before pickup",
+    title: "Cancellations",
+    description: "Call our team and we'll sort it",
   },
   {
     icon: ReceiptText,

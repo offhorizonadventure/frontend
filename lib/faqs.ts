@@ -35,6 +35,16 @@ export const FAQS: Faq[] = [
       "Yes, a refundable security deposit is required at the time of pickup. The deposit is fully refunded after the vehicle is returned, subject to inspection and terms.",
   },
   {
+    question: "How much do I pay when booking online?",
+    answer:
+      "You pay 10% of the booking total online to confirm your vehicle. The remaining balance is settled after your ride is over and the vehicle has been returned.",
+  },
+  {
+    question: "How do I cancel or change my booking?",
+    answer:
+      "Cancellations and changes are handled by our team rather than online. Call or WhatsApp us with your booking details and we'll take care of it and explain any applicable charges.",
+  },
+  {
     question: "Can I extend my booking duration?",
     answer:
       "Yes, booking extensions are allowed based on vehicle availability. Just inform us in advance and we'll happily help you extend your rental on a daily, weekly or monthly basis.",

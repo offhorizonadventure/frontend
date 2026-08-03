@@ -29,7 +29,7 @@ const GOOGLE_RATING = 4.8;
 const TRUST_POINTS = [
   { icon: ShieldCheck, title: "Verified Vehicle", description: "Quality checked" },
   { icon: Zap, title: "Instant Booking", description: "Book in 2 minutes" },
-  { icon: Clock3, title: "Flexible Cancellation", description: "Cancel anytime" },
+  { icon: Clock3, title: "Cancellations", description: "Just call our team" },
   { icon: ReceiptText, title: "No Hidden Charges", description: "Transparent pricing" },
   { icon: Headset, title: "Local Support", description: "Manali & Bhuntar" },
 ] as const;
@@ -43,9 +43,11 @@ const INCLUSIONS = [
 
 const POLICIES = [
   "A valid driving licence and a government photo ID are required at pickup.",
-  "A refundable security deposit is collected at pickup and depends on your route.",
+  "10% is paid online to confirm the booking; the balance is settled after the ride, when the vehicle is returned.",
+  "A refundable security deposit is part of the total and is returned after the vehicle is handed back.",
   "Fuel is not included and the vehicle is handed over and returned at the same level.",
   "Late returns are charged pro rata at the daily rate.",
+  "To change or cancel a booking, contact our team — cancellations are not done online.",
 ] as const;
 
 function formatMoney(amount: number) {

@@ -17,6 +17,11 @@ export type VehicleListItem = {
   subcategoryName: string | null;
   categoryId: string | null;
   categoryName: string | null;
+  /**
+   * Free for the dates asked about — or for today, when no dates were given.
+   * Null when availability wasn't looked up at all.
+   */
+  isAvailable: boolean | null;
 };
 
 export type FilterOption = {
@@ -71,7 +76,42 @@ function toListItem(row: VehicleRow): VehicleListItem {
     subcategoryName: row.vehicle_subcategories?.name ?? null,
     categoryId: category?.id ?? null,
     categoryName: category?.name ?? null,
+    isAvailable: null,
   };
+}
+
+/** Today in the local calendar, as the ISO date the RPC expects. */
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Marks each vehicle free or booked for a date range.
+ *
+ * Falls back to today when no range is given, so a card can always say
+ * something truthful rather than staying silent until someone picks dates.
+ * One RPC call for the whole page, not one per card.
+ */
+async function withAvailability(
+  vehicles: VehicleListItem[],
+  from?: string,
+  to?: string
+): Promise<VehicleListItem[]> {
+  if (vehicles.length === 0) return vehicles;
+
+  const start = from ?? today();
+  const end = to ?? start;
+  const availableIds = await getAvailableIds(start, end);
+
+  // A failed lookup leaves availability unknown rather than claiming
+  // everything is booked.
+  if (availableIds === null) return vehicles;
+
+  const free = new Set(availableIds);
+  return vehicles.map((vehicle) => ({
+    ...vehicle,
+    isAvailable: free.has(vehicle.id),
+  }));
 }
 
 /**
@@ -157,7 +197,11 @@ export async function getVehicles(query: VehicleQuery): Promise<{
   }
 
   return {
-    vehicles: ((data ?? []) as unknown as VehicleRow[]).map(toListItem),
+    vehicles: await withAvailability(
+      ((data ?? []) as unknown as VehicleRow[]).map(toListItem),
+      query.from,
+      query.to
+    ),
     total: count ?? 0,
   };
 }
@@ -379,7 +423,9 @@ export async function getVehiclesByCategoryName(
     return [];
   }
 
-  return ((data ?? []) as unknown as VehicleRow[]).map(toListItem);
+  return withAvailability(
+    ((data ?? []) as unknown as VehicleRow[]).map(toListItem)
+  );
 }
 
 /**
@@ -413,7 +459,7 @@ export async function getShowcaseVehiclesByCategory(
   );
 
   if (curatedRows.length > 0) {
-    return { vehicles: curatedRows, curated: true };
+    return { vehicles: await withAvailability(curatedRows), curated: true };
   }
 
   const { data: all, error } = await supabase
@@ -429,7 +475,9 @@ export async function getShowcaseVehiclesByCategory(
   }
 
   return {
-    vehicles: ((all ?? []) as unknown as VehicleRow[]).map(toListItem),
+    vehicles: await withAvailability(
+      ((all ?? []) as unknown as VehicleRow[]).map(toListItem)
+    ),
     curated: false,
   };
 }

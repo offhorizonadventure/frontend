@@ -367,8 +367,12 @@ export function LoginForm() {
 
       <p className="mt-4 text-center text-xs text-neutral-400">
         By continuing you agree to our{" "}
-        <Link href="/contact" className="underline underline-offset-2">
+        <Link href="/terms" className="underline underline-offset-2">
           terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline underline-offset-2">
+          privacy policy
         </Link>
         .
       </p>

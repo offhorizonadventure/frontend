@@ -28,6 +28,35 @@ function Tags({ vehicle }: { vehicle: VehicleListItem }) {
   );
 }
 
+/**
+ * Free-or-booked badge.
+ *
+ * Reflects the dates being filtered on, or today when none are chosen.
+ * Renders nothing when availability couldn't be determined — better silent
+ * than wrong about whether a bike can be had.
+ */
+function AvailabilityTag({ vehicle }: { vehicle: VehicleListItem }) {
+  if (vehicle.isAvailable === null) return null;
+
+  return (
+    <span
+      className={`absolute top-3 left-3 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+        vehicle.isAvailable
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-red-50 text-red-700"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`size-1.5 rounded-full ${
+          vehicle.isAvailable ? "bg-emerald-500" : "bg-red-500"
+        }`}
+      />
+      {vehicle.isAvailable ? "Available" : "Booked"}
+    </span>
+  );
+}
+
 function VehicleImage({ vehicle }: { vehicle: VehicleListItem }) {
   if (!vehicle.imageUrl) {
     return (
@@ -53,12 +82,9 @@ function VehicleImage({ vehicle }: { vehicle: VehicleListItem }) {
 
 export function VehicleCard({
   vehicle,
-  /** Only shown when the visitor has filtered by a date range. */
-  showAvailable = false,
   view = "grid",
 }: {
   vehicle: VehicleListItem;
-  showAvailable?: boolean;
   view?: "grid" | "list";
 }) {
   const href = `/vehicles/${vehicle.slug}`;
@@ -68,11 +94,7 @@ export function VehicleCard({
       <article className="group flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white transition-all hover:border-neutral-300 hover:shadow-md sm:flex-row">
         <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-white sm:aspect-square sm:w-48">
           <VehicleImage vehicle={vehicle} />
-          {showAvailable && (
-            <span className="absolute top-3 left-3 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-              Available
-            </span>
-          )}
+          <AvailabilityTag vehicle={vehicle} />
         </div>
 
         <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
@@ -103,11 +125,7 @@ export function VehicleCard({
     <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md">
       <div className="relative aspect-[4/3] overflow-hidden bg-white">
         <VehicleImage vehicle={vehicle} />
-        {showAvailable && (
-          <span className="absolute top-3 left-3 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-            Available
-          </span>
-        )}
+        <AvailabilityTag vehicle={vehicle} />
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">

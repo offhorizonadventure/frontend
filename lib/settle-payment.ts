@@ -12,6 +12,10 @@ import { createAdminClient } from "@/utils/supabase/admin";
  * booking that gets created later matches what was actually charged.
  */
 export type CartSnapshot = {
+  /** Booking total across every line, before the advance split. */
+  total?: number;
+  /** What was actually charged online. The rest is due at pickup. */
+  advance?: number;
   items: {
     vehicleId: string;
     startDate: string;
@@ -144,6 +148,24 @@ export async function settlePayment({
 
   let firstBookingId: string | null = null;
 
+  // Only an advance was charged, so each booking is marked part-paid for its
+  // share of it. The share is proportional to the line's own total, and the
+  // rounding remainder goes on the last line so the parts always add back up
+  // to exactly what Razorpay captured.
+  const snapshotTotal =
+    snapshot.total ?? snapshot.items.reduce((sum, item) => sum + item.total, 0);
+  const advanceTaken = snapshot.advance ?? Number(order.amount);
+
+  const advanceShares = snapshot.items.map((item) =>
+    snapshotTotal > 0
+      ? Math.round((item.total / snapshotTotal) * advanceTaken)
+      : 0
+  );
+  const allocated = advanceShares.reduce((sum, share) => sum + share, 0);
+  if (advanceShares.length > 0) {
+    advanceShares[advanceShares.length - 1] += advanceTaken - allocated;
+  }
+
   // Names for the booking-line snapshots, so a line still reads correctly if
   // the vehicle or gear is later removed from the catalogue.
   const [{ data: vehicleRows }, { data: gearRows }] = await Promise.all([
@@ -178,18 +200,22 @@ export async function settlePayment({
     ])
   );
 
-  for (const item of snapshot.items) {
+  for (const [index, item] of snapshot.items.entries()) {
+    const paid = advanceShares[index] ?? 0;
+
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
         customer_id: order.customer_id,
         status: "confirmed",
-        payment_status: "paid",
+        // 'partial' unless the advance happens to cover the whole line —
+        // the balance is collected when the vehicle is handed over.
+        payment_status: paid >= item.total ? "paid" : "partial",
         start_date: item.startDate,
         end_date: item.endDate,
         location: item.location,
         total_amount: item.total,
-        amount_paid: item.total,
+        amount_paid: paid,
         razorpay_payment_id: razorpayPaymentId,
         payment_order_id: order.id,
         created_by: order.customer_id,

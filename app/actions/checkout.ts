@@ -81,10 +81,16 @@ export async function startCheckout(): Promise<StartCheckoutResult> {
     }
   }
 
+  if (cart.advanceAmount <= 0) {
+    return { ok: false, error: "This cart is too small to book online." };
+  }
+
+  // Only the advance is charged now. The balance is collected at pickup, so
+  // the Razorpay order is deliberately smaller than the booking total.
   let order;
   try {
     order = await createRazorpayOrder({
-      amountInRupees: cart.total,
+      amountInRupees: cart.advanceAmount,
       // Razorpay caps receipts at 40 characters.
       receipt: `cart_${user.id.slice(0, 8)}_${Date.now()}`.slice(0, 40),
       notes: { customer_id: user.id },
@@ -102,6 +108,8 @@ export async function startCheckout(): Promise<StartCheckoutResult> {
   // change can't make the rider's booking disagree with what they were
   // charged.
   const snapshot: CartSnapshot = {
+    total: cart.total,
+    advance: cart.advanceAmount,
     items: cart.items.map((item) => ({
       vehicleId: item.vehicleId,
       startDate: item.startDate,
@@ -121,8 +129,11 @@ export async function startCheckout(): Promise<StartCheckoutResult> {
   // Written as the signed-in user, so RLS pins customer_id to them.
   const { error: orderError } = await supabase.from("payment_orders").insert({
     customer_id: user.id,
+    // What Razorpay is charging — the advance, not the booking total. The
+    // settlement checks the captured amount against this, so it has to be the
+    // figure that was actually asked for.
     razorpay_order_id: order.id,
-    amount: cart.total,
+    amount: cart.advanceAmount,
     coupon_id: null,
     discount: cart.discount,
     deposit_total: cart.depositTotal,

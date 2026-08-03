@@ -148,7 +148,7 @@ export default async function CheckoutPage() {
           <aside className="lg:sticky lg:top-28 lg:h-fit">
             <div className="rounded-2xl border border-neutral-200 bg-white p-5 sm:p-6">
               <h2 className="text-sm font-bold tracking-wide text-neutral-950 uppercase">
-                Amount <span className="text-brand">Payable</span>
+                Payment <span className="text-brand">Summary</span>
               </h2>
 
               <dl className="mt-4 flex flex-col gap-2.5 text-sm">
@@ -176,9 +176,25 @@ export default async function CheckoutPage() {
                   <dd>{formatMoney(cart.depositTotal)}</dd>
                 </div>
 
-                <div className="mt-1 flex items-center justify-between border-t border-neutral-200 pt-3 text-lg font-extrabold text-neutral-950">
-                  <dt>Total</dt>
+                <div className="mt-1 flex items-center justify-between border-t border-neutral-200 pt-3 font-semibold text-neutral-950">
+                  <dt>Booking total</dt>
                   <dd>{formatMoney(cart.total)}</dd>
+                </div>
+
+                {/* The split is the whole point of this screen, so it's stated
+                    plainly rather than buried in small print. */}
+                <div className="mt-2 flex items-center justify-between rounded-lg bg-brand/5 px-3 py-2.5 text-lg font-extrabold text-neutral-950">
+                  <dt>Pay now (10%)</dt>
+                  <dd className="text-brand">
+                    {formatMoney(cart.advanceAmount)}
+                  </dd>
+                </div>
+
+                <div className="flex items-center justify-between px-3 text-sm text-neutral-600">
+                  <dt>Due after the ride</dt>
+                  <dd className="font-semibold">
+                    {formatMoney(cart.dueAmount)}
+                  </dd>
                 </div>
               </dl>
 
@@ -187,8 +203,9 @@ export default async function CheckoutPage() {
                   className="mt-px size-3.5 shrink-0 text-brand"
                   aria-hidden="true"
                 />
-                The security deposit is refundable and returned after the
-                vehicle is handed back.
+                You pay 10% now to confirm the booking. The balance is settled
+                once your ride is over and the vehicle is returned, and the
+                refundable security deposit is returned after inspection.
               </p>
 
               {needsRoute ? (

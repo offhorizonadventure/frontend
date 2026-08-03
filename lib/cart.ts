@@ -62,9 +62,24 @@ export type CartSummary = {
   depositTotal: number;
   /** Lines still missing a route, so the deposit shown is incomplete. */
   depositPending: number;
-  /** What's payable at booking, deposit included. */
+  /** Hire + gear + deposit, less any discount. The whole cost of the trip. */
   total: number;
+  /** Taken online now to hold the booking. */
+  advanceAmount: number;
+  /** The rest, collected when the vehicle is handed over. */
+  dueAmount: number;
 };
+
+/**
+ * Share of the total taken up front. The balance is collected at pickup, so a
+ * rider isn't asked for the full amount weeks before their trip.
+ */
+export const ADVANCE_RATE = 0.1;
+
+/** Rounded to whole rupees — Razorpay works in paise and rejects fractions. */
+export function advanceFor(total: number) {
+  return Math.round(total * ADVANCE_RATE);
+}
 
 type CartRow = {
   id: string;
@@ -106,6 +121,8 @@ export async function getCartSummary(): Promise<CartSummary> {
     depositTotal: 0,
     depositPending: 0,
     total: 0,
+    advanceAmount: 0,
+    dueAmount: 0,
   };
 
   const supabase = await createClient();
@@ -205,6 +222,10 @@ export async function getCartSummary(): Promise<CartSummary> {
   const coupon = await getAppliedCoupon(vehicleTotal + gearTotal);
   const discount = coupon?.discount ?? 0;
 
+  const total =
+    Math.max(0, vehicleTotal + gearTotal - discount) + depositTotal;
+  const advanceAmount = advanceFor(total);
+
   return {
     items,
     gear,
@@ -214,7 +235,9 @@ export async function getCartSummary(): Promise<CartSummary> {
     discount,
     depositTotal,
     depositPending,
-    total: Math.max(0, vehicleTotal + gearTotal - discount) + depositTotal,
+    total,
+    advanceAmount,
+    dueAmount: Math.max(0, total - advanceAmount),
   };
 }
 

@@ -161,9 +161,23 @@ export default async function CartPage() {
                     </dd>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-lg font-extrabold text-neutral-950">
-                    <dt>Total</dt>
+                  <div className="flex items-center justify-between border-t border-neutral-200 pt-3 font-semibold text-neutral-950">
+                    <dt>Booking total</dt>
                     <dd>{formatMoney(cart.total)}</dd>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg bg-brand/5 px-3 py-2.5 text-lg font-extrabold text-neutral-950">
+                    <dt>Pay now (10%)</dt>
+                    <dd className="text-brand">
+                      {formatMoney(cart.advanceAmount)}
+                    </dd>
+                  </div>
+
+                  <div className="flex items-center justify-between px-3 text-sm text-neutral-600">
+                    <dt>Due after the ride</dt>
+                    <dd className="font-semibold">
+                      {formatMoney(cart.dueAmount)}
+                    </dd>
                   </div>
                 </dl>
 
@@ -175,8 +189,8 @@ export default async function CartPage() {
                     aria-hidden="true"
                   />
                   {cart.depositPending > 0
-                    ? "Pick a route on each vehicle to see its refundable deposit. It's collected with the booking and returned after the trip."
-                    : "The security deposit is collected with the booking and refunded after the vehicle is returned."}
+                    ? "Pick a route on each vehicle to see its refundable deposit, then you'll only pay 10% now to confirm."
+                    : "Pay 10% now to confirm. The balance is settled once your ride is over and the vehicle is returned."}
                 </p>
 
                 <Link

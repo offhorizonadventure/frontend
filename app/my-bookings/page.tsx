@@ -13,6 +13,7 @@ import {
 
 import { AccountNav } from "@/components/account-nav";
 import { getMyBookings, type Booking, type BookingStatus } from "@/lib/bookings";
+import { SUPPORT_PHONE, SUPPORT_PHONE_HREF } from "@/lib/locations";
 import { requireCompleteProfile } from "@/utils/supabase/require-user";
 
 export const metadata: Metadata = {
@@ -53,6 +54,8 @@ function BookingCard({ booking }: { booking: Booking }) {
     (sum, vehicle) => sum + vehicle.securityDeposit,
     0
   );
+  // Only an advance is taken online; the rest is collected at handover.
+  const due = Math.max(0, booking.totalAmount - booking.amountPaid);
 
   return (
     <li className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
@@ -63,11 +66,18 @@ function BookingCard({ booking }: { booking: Booking }) {
           >
             {status.label}
           </span>
-          {booking.paymentStatus === "paid" && (
+          {booking.paymentStatus === "paid" ? (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
               <Check className="size-3.5" aria-hidden="true" />
-              Paid
+              Paid in full
             </span>
+          ) : (
+            booking.amountPaid > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-500">
+                <Check className="size-3.5 text-emerald-600" aria-hidden="true" />
+                Advance paid
+              </span>
+            )
           )}
         </div>
         <span className="font-mono text-xs text-neutral-400">
@@ -148,22 +158,51 @@ function BookingCard({ booking }: { booking: Booking }) {
           </div>
         )}
 
-        <dl className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-3 text-sm">
-          <div className="flex items-center gap-1.5 text-neutral-500">
-            <ReceiptText className="size-3.5 text-brand" aria-hidden="true" />
-            <dt>Total paid</dt>
+        <dl className="flex flex-col gap-2 border-t border-neutral-100 pt-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 text-neutral-500">
+              <ReceiptText className="size-3.5 text-brand" aria-hidden="true" />
+              <dt>Booking total</dt>
+            </div>
+            <dd className="font-semibold text-neutral-950">
+              {formatMoney(booking.totalAmount)}
+            </dd>
           </div>
-          <dd className="font-bold text-neutral-950">
-            {formatMoney(booking.amountPaid || booking.totalAmount)}
-          </dd>
+
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-neutral-500">Paid online</dt>
+            <dd className="font-semibold text-emerald-700">
+              {formatMoney(booking.amountPaid)}
+            </dd>
+          </div>
+
+          {due > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-3 py-2">
+              <dt className="font-semibold text-amber-900">
+                Due after the ride
+              </dt>
+              <dd className="font-bold text-amber-900">{formatMoney(due)}</dd>
+            </div>
+          )}
         </dl>
 
         {deposit > 0 && (
-          <p className="-mt-2 text-xs text-neutral-500">
-            Includes {formatMoney(deposit)} refundable deposit, returned after
-            the vehicle is handed back.
+          <p className="-mt-1 text-xs text-neutral-500">
+            The total includes a {formatMoney(deposit)} refundable deposit,
+            returned after the vehicle is handed back.
           </p>
         )}
+
+        <p className="text-xs text-neutral-500">
+          Need to change or cancel this booking? Call our team on{" "}
+          <a
+            href={SUPPORT_PHONE_HREF}
+            className="font-semibold text-brand hover:underline"
+          >
+            {SUPPORT_PHONE}
+          </a>
+          .
+        </p>
 
         {booking.refundAmount > 0 && (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">

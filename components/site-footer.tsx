@@ -158,9 +158,25 @@ export function SiteFooter() {
             behind the fixed contact bar. The bar is hidden from md up, so the
             padding goes with it. */}
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 px-4 pt-6 pb-28 sm:px-6 md:pb-6 lg:flex-row lg:px-8">
-          <p className="order-2 text-xs text-neutral-500 lg:order-1">
-            © {year} BRB Expeditions. All rights reserved.
-          </p>
+          <div className="order-2 flex flex-col items-center gap-2 lg:order-1 lg:items-start">
+            <p className="text-xs text-neutral-500">
+              © {year} BRB Expeditions. All rights reserved.
+            </p>
+            <nav aria-label="Legal" className="flex items-center gap-4">
+              <Link
+                href="/privacy"
+                className="text-xs text-neutral-400 transition-colors hover:text-brand"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/terms"
+                className="text-xs text-neutral-400 transition-colors hover:text-brand"
+              >
+                Terms &amp; Conditions
+              </Link>
+            </nav>
+          </div>
 
           <div className="order-1 flex flex-col items-center gap-2 lg:order-2 lg:items-end">
             <ul className="flex flex-wrap items-center justify-center gap-2">

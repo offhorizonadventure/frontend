@@ -139,7 +139,7 @@ export function RazorpayCheckout({ disabled }: { disabled?: boolean }) {
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 text-sm font-bold tracking-wide text-white uppercase transition-colors hover:bg-brand-dark disabled:opacity-60"
       >
         {busy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-        {busy ? "Opening payment…" : "Pay Securely"}
+        {busy ? "Opening payment…" : "Pay 10% & Confirm"}
       </button>
 
       <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-neutral-500">
