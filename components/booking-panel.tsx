@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { addToCart, type CartActionResult } from "@/app/actions/cart";
-import { LOCATIONS } from "@/lib/cart-constants";
+import { LOCATIONS, rentalDays } from "@/lib/cart-constants";
 
 const ASSURANCES = [
   {
@@ -45,12 +45,6 @@ function addDays(iso: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function dayCount(start: string, end: string) {
-  const from = Date.parse(`${start}T00:00:00Z`);
-  const to = Date.parse(`${end}T00:00:00Z`);
-  if (Number.isNaN(from) || Number.isNaN(to)) return 1;
-  return Math.max(1, Math.round((to - from) / 86_400_000));
-}
 
 export function BookingPanel({
   vehicleId,
@@ -89,7 +83,9 @@ export function BookingPanel({
     }
   }, [state, router, vehicleSlug]);
 
-  const days = dayCount(from, to);
+  // Shared with the cart and the dashboard. This panel used to count days
+  // itself and came out one short, so a two-day hire was quoted as one.
+  const days = rentalDays(from, to);
   const total = pricePerDay * days;
 
   const field =

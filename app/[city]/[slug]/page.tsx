@@ -23,7 +23,10 @@ import {
   type CityContent,
 } from "@/lib/city-content";
 import { SUPPORT_PHONE, SUPPORT_PHONE_HREF } from "@/lib/locations";
-import { getShowcaseVehiclesByCategory } from "@/lib/vehicles";
+import {
+  getCategoryImage,
+  getShowcaseVehiclesByCategory,
+} from "@/lib/vehicles";
 
 const SITE_URL = "https://www.bikerentalsbhuntar.com";
 
@@ -80,6 +83,14 @@ export async function generateMetadata({
   const title = `${category.label} in ${content.city} — Self Drive from BRB Expeditions`;
   const description = `${category.label} in ${content.city}. ${category.blurb} Transparent pricing, well-maintained vehicles and local support in ${content.city}.`;
 
+  // The category's own photo, so a car page doesn't show a motorcycle in
+  // search results. Falls back to the city image only if none is set.
+  const categoryImage = await getCategoryImage(category.categoryName);
+  const image = categoryImage ?? content.ogImage;
+  const imageAlt = categoryImage
+    ? `${category.label} available in ${content.city} from BRB Expeditions`
+    : content.ogImageAlt;
+
   return {
     title,
     description,
@@ -91,13 +102,13 @@ export async function generateMetadata({
       title,
       description,
       url: categoryPath(city, category.key),
-      images: [{ url: content.ogImage, alt: content.ogImageAlt }],
+      images: [{ url: image, alt: imageAlt }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [content.ogImage],
+      images: [image],
     },
   };
 }

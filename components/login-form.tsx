@@ -305,10 +305,17 @@ export function LoginForm() {
               )}
             </button>
           </div>
-          {mode === "signup" && (
+          {mode === "signup" ? (
             <p className="text-xs text-neutral-500">
               At least {MIN_PASSWORD} characters.
             </p>
+          ) : (
+            <Link
+              href="/forgot-password"
+              className="self-end text-xs font-semibold text-brand transition-colors hover:text-brand-dark"
+            >
+              Forgot password?
+            </Link>
           )}
         </div>
 

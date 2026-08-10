@@ -13,12 +13,18 @@
 	}
 }
 
-# Send www to the bare domain so a page is never indexed at two addresses.
-www.{$DOMAIN} {
-	redir https://{$DOMAIN}{uri} permanent
+# Everything is served from www, because that is what the site declares as
+# canonical (metadataBase, the sitemap and every canonical tag all use
+# www.bikerentalsbhuntar.com) and what Google has already indexed.
+#
+# This used to redirect the other way, which contradicted the canonical tags:
+# the server sent visitors to the bare domain while the page told search
+# engines the www version was the real one.
+{$DOMAIN} {
+	redir https://www.{$DOMAIN}{uri} permanent
 }
 
-{$DOMAIN} {
+www.{$DOMAIN} {
 	# zstd first — better ratio than gzip for clients that support it.
 	encode zstd gzip
 

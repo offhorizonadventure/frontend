@@ -12,11 +12,11 @@ export type Review = {
  */
 export const REVIEWS: Review[] = [
   {
-    name: "Niteesh Bharadwaj",
-    badge: "Local Guide",
+    name: "Vishal Solanki",
+    badge: "Google Review",
     rating: 5,
     quote:
-      "The bike was in excellent condition and the whole rental process was smooth and hassle-free. The owner was friendly and helpful throughout — he even dropped us near our room after we returned the bike. Small gestures like this make a big difference.",
+      "The staff were kind, helpful and professional. They explained everything clearly and the rental process was smooth. Both the bikes and the cars are well maintained and clean, and I had no trouble at all during my trip. I would recommend them to anyone.",
   },
   {
     name: "Rahul Pawar",

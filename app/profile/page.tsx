@@ -4,6 +4,7 @@ import {
   BadgeCheck,
   CalendarCheck,
   Clock,
+  LockKeyhole,
   Mail,
   Pencil,
   Phone,
@@ -67,13 +68,22 @@ export default async function ProfilePage() {
               </div>
             </div>
 
-            <Link
-              href="/profile/edit"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-neutral-300 px-4 py-2 text-xs font-semibold text-neutral-950 transition-colors hover:border-neutral-950"
-            >
-              <Pencil className="size-3.5" aria-hidden="true" />
-              Edit
-            </Link>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link
+                href="/profile/edit"
+                className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 px-4 py-2 text-xs font-semibold text-neutral-950 transition-colors hover:border-neutral-950"
+              >
+                <Pencil className="size-3.5" aria-hidden="true" />
+                Edit
+              </Link>
+              <Link
+                href="/profile/password"
+                className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 px-4 py-2 text-xs font-semibold text-neutral-950 transition-colors hover:border-neutral-950"
+              >
+                <LockKeyhole className="size-3.5" aria-hidden="true" />
+                Password
+              </Link>
+            </div>
           </div>
 
           <dl className="divide-y divide-neutral-100">

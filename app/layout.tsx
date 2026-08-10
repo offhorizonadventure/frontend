@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Poppins, Inter } from "next/font/google";
 import { FloatingContact } from "@/components/floating-contact";
 import { SiteFooter } from "@/components/site-footer";
@@ -21,6 +22,9 @@ const body = Inter({
 });
 
 const siteUrl = "https://www.bikerentalsbhuntar.com";
+// Analytics and Search Console verification are configured inside GTM, so
+// this is the only tag the site needs to load.
+const GTM_ID = "GTM-NFG3Q32";
 const siteName = "BRB Expeditions";
 const title = "BRB Expeditions – Ride with Trusted Local Experts – Get 10% Off";
 const description =
@@ -98,7 +102,30 @@ export default async function RootLayout({
       lang="en-US"
       className={`${heading.variable} ${body.variable} h-full antialiased`}
     >
+      <head>
+        {/* Google Tag Manager. afterInteractive keeps it off the critical path
+            so it can't delay first paint — GTM itself loads Analytics and any
+            other tags, so nothing else needs adding here. */}
+        <Script id="gtm" strategy="afterInteractive">
+          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GTM_ID}');`}
+        </Script>
+      </head>
       <body className="flex min-h-full flex-col">
+        {/* Fallback for visitors with JavaScript disabled. */}
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+            title="Google Tag Manager"
+          />
+        </noscript>
+
         <SiteHeader isSignedIn={Boolean(user)} cartCount={cartCount} />
         {children}
         <SiteFooter />

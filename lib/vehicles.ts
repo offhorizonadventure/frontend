@@ -429,6 +429,26 @@ export async function getVehiclesByCategoryName(
 }
 
 /**
+ * The category's own image, for social cards.
+ *
+ * Without this every category page shared the city's hero photo — so the car
+ * page advertised itself with a picture of a motorcycle in search results.
+ */
+export async function getCategoryImage(
+  categoryName: string
+): Promise<string | null> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("vehicle_categories")
+    .select("image_url")
+    .ilike("name", categoryName)
+    .maybeSingle();
+
+  return (data as { image_url: string | null } | null)?.image_url ?? null;
+}
+
+/**
  * Featured vehicles in a category, falling back to the whole category.
  *
  * The city category pages are meant to showcase a curated pick, but a page
