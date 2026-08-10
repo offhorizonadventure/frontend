@@ -21,6 +21,9 @@
 # the server sent visitors to the bare domain while the page told search
 # engines the www version was the real one.
 {$DOMAIN} {
+	# Same header hygiene as the main site — the redirect shouldn't be the one
+	# place that names the server software.
+	header -Server
 	redir https://www.{$DOMAIN}{uri} permanent
 }
 
