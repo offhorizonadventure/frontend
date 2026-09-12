@@ -149,6 +149,11 @@ export function SiteFooter() {
                 </a>
               </li>
             </ul>
+
+            {/* Sits here rather than in the bottom bar: the contact column is
+                the shortest of the four and left a tall gap, and an award
+                belongs next to the other reasons to trust us. */}
+            <TripAdvisorBadge />
           </div>
         </div>
       </div>
@@ -179,8 +184,7 @@ export function SiteFooter() {
             </nav>
           </div>
 
-          <div className="order-1 flex flex-col items-center gap-3 lg:order-2 lg:items-end">
-            <TripAdvisorBadge />
+          <div className="order-1 flex flex-col items-center gap-2 lg:order-2 lg:items-end">
             <ul className="flex flex-wrap items-center justify-center gap-2">
               {PAYMENT_METHODS.map((method) => (
                 <li

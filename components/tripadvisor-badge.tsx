@@ -16,9 +16,13 @@ import Script from "next/script";
 export function TripAdvisorBadge() {
   return (
     <>
+      {/* Sizing lives on this wrapper, not on the image: the script replaces
+          everything inside, so anything styled in there is thrown away. The
+          badge art is on a white ground, so it gets a rounded plate to sit on
+          rather than reading as a stray white rectangle on the dark footer. */}
       <div
         id="TA_certificateOfExcellence894"
-        className="TA_certificateOfExcellence"
+        className="TA_certificateOfExcellence w-[116px] overflow-hidden rounded-lg bg-white p-1"
       >
         <ul id="zigsEc8x" className="TA_links i9CYxd9gMj">
           <li id="ZkHStUZrno" className="E6ne23f5">
@@ -34,7 +38,7 @@ export function TripAdvisorBadge() {
               <img
                 src="https://static.tacdn.com/img2/travelers_choice/widgets/tchotel_2024_LL.png"
                 alt="TripAdvisor Travellers' Choice 2024 award for BRB Expeditions"
-                className="widCOEImg"
+                className="widCOEImg h-auto w-full"
                 id="CDSWIDCOELOGO"
                 width={130}
                 height={130}
