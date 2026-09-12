@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { addToCart, type CartActionResult } from "@/app/actions/cart";
-import { LOCATIONS, rentalDays } from "@/lib/cart-constants";
+import { LOCATIONS, PICKUP_BRANCHES, rentalDays } from "@/lib/cart-constants";
 
 const ASSURANCES = [
   {
@@ -130,6 +130,26 @@ export function BookingPanel({
               onChange={(e) => setTo(e.target.value)}
               className={field}
             />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-neutral-500">
+              Pickup location
+            </span>
+            <select
+              name="pickupBranch"
+              defaultValue={PICKUP_BRANCHES[0].value}
+              className={field}
+            >
+              {PICKUP_BRANCHES.map((branch) => (
+                <option key={branch.value} value={branch.value}>
+                  {branch.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-neutral-500">
+              Which branch you will collect the vehicle from.
+            </span>
           </label>
 
           <label className="flex flex-col gap-1.5">

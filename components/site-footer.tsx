@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Mail, MapPin, Navigation, Phone, ShieldCheck } from "lucide-react";
 
+import { TripAdvisorBadge } from "@/components/tripadvisor-badge";
 import {
   LISTED_OFFICES,
   SUPPORT_EMAIL,
@@ -178,7 +179,8 @@ export function SiteFooter() {
             </nav>
           </div>
 
-          <div className="order-1 flex flex-col items-center gap-2 lg:order-2 lg:items-end">
+          <div className="order-1 flex flex-col items-center gap-3 lg:order-2 lg:items-end">
+            <TripAdvisorBadge />
             <ul className="flex flex-wrap items-center justify-center gap-2">
               {PAYMENT_METHODS.map((method) => (
                 <li

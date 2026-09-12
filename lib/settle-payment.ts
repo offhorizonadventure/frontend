@@ -1,7 +1,7 @@
 import "server-only";
 
 import { fetchRazorpayPayment } from "@/lib/razorpay";
-import type { Location } from "@/lib/cart-constants";
+import type { Location, PickupBranch } from "@/lib/cart-constants";
 import { createAdminClient } from "@/utils/supabase/admin";
 
 /**
@@ -21,6 +21,8 @@ export type CartSnapshot = {
     startDate: string;
     endDate: string;
     location: Location | null;
+    /** Branch the rider asked to collect from. */
+    pickupBranch: PickupBranch | null;
     pricePerDay: number;
     deposit: number;
     total: number;
@@ -242,6 +244,7 @@ export async function settlePayment({
         booking_id: booking.id,
         vehicle_id: item.vehicleId,
         vehicle_name: vehicleNames.get(item.vehicleId) ?? null,
+        pickup_branch: item.pickupBranch ?? null,
         price_per_day: item.pricePerDay,
         security_deposit: item.deposit,
         tax: 0,

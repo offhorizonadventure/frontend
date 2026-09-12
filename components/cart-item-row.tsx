@@ -17,7 +17,11 @@ import {
   updateCartItem,
   type CartActionResult,
 } from "@/app/actions/cart";
-import { LOCATIONS, rentalDays } from "@/lib/cart-constants";
+import {
+  LOCATIONS,
+  PICKUP_BRANCHES,
+  rentalDays,
+} from "@/lib/cart-constants";
 import type { CartItem } from "@/lib/cart";
 
 function formatMoney(amount: number) {
@@ -38,6 +42,9 @@ export function CartItemRow({ item }: { item: CartItem }) {
   const [from, setFrom] = React.useState(item.startDate);
   const [to, setTo] = React.useState(item.endDate);
   const [location, setLocation] = React.useState(item.location ?? LOCATIONS[0]);
+  const [pickupBranch, setPickupBranch] = React.useState(
+    item.pickupBranch ?? PICKUP_BRANCHES[0].value
+  );
 
   // Optimistic total so the line reacts as dates change; the server recomputes
   // the authoritative figure from the vehicle's current price on submit.
@@ -46,7 +53,8 @@ export function CartItemRow({ item }: { item: CartItem }) {
   const dirty =
     from !== item.startDate ||
     to !== item.endDate ||
-    location !== (item.location ?? LOCATIONS[0]);
+    location !== (item.location ?? LOCATIONS[0]) ||
+    pickupBranch !== (item.pickupBranch ?? PICKUP_BRANCHES[0].value);
 
   const field =
     "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-950 focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none";
@@ -150,6 +158,24 @@ export function CartItemRow({ item }: { item: CartItem }) {
             onChange={(e) => setTo(e.target.value)}
             className={field}
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-neutral-500">Pickup</span>
+          <select
+            name="pickupBranch"
+            value={pickupBranch}
+            onChange={(e) =>
+              setPickupBranch(e.target.value as typeof pickupBranch)
+            }
+            className={field}
+          >
+            {PICKUP_BRANCHES.map((branch) => (
+              <option key={branch.value} value={branch.value}>
+                {branch.label}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="flex flex-col gap-1.5">

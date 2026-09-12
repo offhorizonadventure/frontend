@@ -16,6 +16,29 @@ export const LOCATIONS = [
 
 export type Location = (typeof LOCATIONS)[number];
 
+/**
+ * Where the rider collects the vehicle.
+ *
+ * Different question from LOCATIONS above, which is where they are riding to
+ * and decides the security deposit. Kept here rather than derived from
+ * OFFICES so the wording in a dropdown can stay short, and mirrors the check
+ * constraint on cart_items.pickup_branch.
+ */
+export const PICKUP_BRANCHES = [
+  { value: "manali-log-huts", label: "Manali (Log Huts Road)" },
+  { value: "manali-vashisht", label: "Manali (Vashisht)" },
+  { value: "kullu", label: "Kullu (Akhara)" },
+  { value: "bhuntar", label: "Bhuntar (Chowk Bhuntar)" },
+] as const;
+
+export type PickupBranch = (typeof PICKUP_BRANCHES)[number]["value"];
+
+export function pickupBranchLabel(value: string | null | undefined) {
+  return (
+    PICKUP_BRANCHES.find((branch) => branch.value === value)?.label ?? null
+  );
+}
+
 const MS_PER_DAY = 86_400_000;
 
 /**

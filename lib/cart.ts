@@ -3,7 +3,14 @@ import "server-only";
 import { rentalDays, type Location } from "@/lib/cart-constants";
 import { createClient } from "@/utils/supabase/server";
 
-export { LOCATIONS, rentalDays, type Location } from "@/lib/cart-constants";
+export {
+  LOCATIONS,
+  PICKUP_BRANCHES,
+  rentalDays,
+  type Location,
+  type PickupBranch,
+} from "@/lib/cart-constants";
+import type { PickupBranch } from "@/lib/cart-constants";
 
 export type CartItem = {
   id: string;
@@ -11,6 +18,8 @@ export type CartItem = {
   startDate: string;
   endDate: string;
   location: Location | null;
+  /** Branch the rider chose to collect from. Null until they pick one. */
+  pickupBranch: PickupBranch | null;
   name: string;
   slug: string;
   pricePerDay: number;
@@ -87,6 +96,7 @@ type CartRow = {
   start_date: string;
   end_date: string;
   location: Location | null;
+  pickup_branch: PickupBranch | null;
   vehicles: {
     name: string;
     slug: string;
@@ -136,7 +146,7 @@ export async function getCartSummary(): Promise<CartSummary> {
     supabase
       .from("cart_items")
       .select(
-        `id, vehicle_id, start_date, end_date, location,
+        `id, vehicle_id, start_date, end_date, location, pickup_branch,
          vehicles(name, slug, price_per_day, bike_photo_url,
                   vehicle_subcategories(name))`
       )
@@ -181,6 +191,7 @@ export async function getCartSummary(): Promise<CartSummary> {
       startDate: row.start_date,
       endDate: row.end_date,
       location: row.location,
+      pickupBranch: row.pickup_branch,
       name: vehicle.name,
       slug: vehicle.slug,
       pricePerDay: vehicle.price_per_day,

@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import {
   LOCATIONS,
+  PICKUP_BRANCHES,
   getCartSummary,
   rentalDays,
   type Location,
+  type PickupBranch,
 } from "@/lib/cart";
 import { isVehicleAvailable } from "@/lib/vehicles";
 import { createClient } from "@/utils/supabase/server";
@@ -65,6 +67,14 @@ function validateRange(
 function parseLocation(value: unknown): Location | null {
   return typeof value === "string" && LOCATIONS.includes(value as Location)
     ? (value as Location)
+    : null;
+}
+
+/** Anything the form did not offer is discarded rather than stored. */
+function parsePickupBranch(value: unknown): PickupBranch | null {
+  return typeof value === "string" &&
+    PICKUP_BRANCHES.some((branch) => branch.value === value)
+    ? (value as PickupBranch)
     : null;
 }
 
@@ -132,6 +142,7 @@ export async function addToCart(
       start_date: range.startDate,
       end_date: range.endDate,
       location: parseLocation(formData.get("location")),
+      pickup_branch: parsePickupBranch(formData.get("pickupBranch")),
     },
     { onConflict: "customer_id,vehicle_id" }
   );
@@ -175,6 +186,7 @@ export async function updateCartItem(
       start_date: range.startDate,
       end_date: range.endDate,
       location: parseLocation(formData.get("location")),
+      pickup_branch: parsePickupBranch(formData.get("pickupBranch")),
     })
     .eq("id", itemId)
     .eq("customer_id", userId)

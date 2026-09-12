@@ -115,6 +115,7 @@ export async function startCheckout(): Promise<StartCheckoutResult> {
       startDate: item.startDate,
       endDate: item.endDate,
       location: item.location,
+      pickupBranch: item.pickupBranch,
       pricePerDay: item.pricePerDay,
       deposit: item.securityDeposit ?? 0,
       total: item.subtotal + (item.securityDeposit ?? 0),
