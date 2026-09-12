@@ -449,57 +449,71 @@ export async function getCategoryImage(
 }
 
 /**
- * Featured vehicles in a category, falling back to the whole category.
+ * A category's vehicles for one city, split by the branch they sit at.
  *
- * The city category pages are meant to showcase a curated pick, but a page
- * that renders nothing because nobody has ticked "featured" yet is worse than
- * one showing the full range — so an empty featured set falls through.
+ * The city category pages present the fleet branch by branch, because a rider
+ * collects from one pickup point and needs to know which bikes are actually
+ * there. Returned keyed by branch so the page can render a section per
+ * branch, including the empty ones: a branch with nothing listed still has to
+ * say so rather than silently vanish.
+ *
+ * Availability is resolved once across the whole set rather than per branch,
+ * so adding a branch does not add a round trip.
  */
-export async function getShowcaseVehiclesByCategory(
+export async function getVehiclesByCategoryAndBranch(
   categoryName: string,
-  limit = 8
-): Promise<{ vehicles: VehicleListItem[]; curated: boolean }> {
-  const supabase = await createClient();
-
-  const select = `id, name, slug, price_per_day, bike_photo_url, fuel_level, subcategory_id,
-     vehicle_subcategories!inner(
-       id, name, vehicle_categories!inner(id, name)
-     )`;
-
-  const { data: featured } = await supabase
-    .from("vehicles")
-    .select(select)
-    .ilike("vehicle_subcategories.vehicle_categories.name", categoryName)
-    .eq("is_featured", true)
-    .order("price_per_day", { ascending: true })
-    .limit(limit);
-
-  const curatedRows = ((featured ?? []) as unknown as VehicleRow[]).map(
-    toListItem
+  branchKeys: readonly string[],
+  limitPerBranch = 8
+): Promise<Record<string, VehicleListItem[]>> {
+  const empty = Object.fromEntries(
+    branchKeys.map((key) => [key, [] as VehicleListItem[]])
   );
 
-  if (curatedRows.length > 0) {
-    return { vehicles: await withAvailability(curatedRows), curated: true };
-  }
+  if (branchKeys.length === 0) return empty;
 
-  const { data: all, error } = await supabase
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
     .from("vehicles")
-    .select(select)
+    .select(
+      `id, name, slug, price_per_day, bike_photo_url, fuel_level, subcategory_id, branch,
+       vehicle_subcategories!inner(
+         id, name, vehicle_categories!inner(id, name)
+       )`
+    )
     .ilike("vehicle_subcategories.vehicle_categories.name", categoryName)
-    .order("price_per_day", { ascending: true })
-    .limit(limit);
+    .in("branch", branchKeys as string[])
+    .order("price_per_day", { ascending: true });
 
   if (error) {
     console.error(`Failed to load ${categoryName} vehicles:`, error.message);
-    return { vehicles: [], curated: false };
+    return empty;
   }
 
-  return {
-    vehicles: await withAvailability(
-      ((all ?? []) as unknown as VehicleRow[]).map(toListItem)
-    ),
-    curated: false,
+  const rows = (data ?? []) as unknown as (VehicleRow & { branch: string })[];
+
+  // Capped per branch before availability is resolved, so the lookup only
+  // covers vehicles that will actually be rendered.
+  const grouped: Record<string, (VehicleRow & { branch: string })[]> = {
+    ...Object.fromEntries(branchKeys.map((key) => [key, []])),
   };
+  for (const row of rows) {
+    const bucket = grouped[row.branch];
+    if (bucket && bucket.length < limitPerBranch) bucket.push(row);
+  }
+
+  const flat = Object.values(grouped).flat();
+  const withStatus = await withAvailability(flat.map(toListItem));
+  const byId = new Map(withStatus.map((vehicle) => [vehicle.id, vehicle]));
+
+  return Object.fromEntries(
+    branchKeys.map((key) => [
+      key,
+      (grouped[key] ?? [])
+        .map((row) => byId.get(row.id))
+        .filter((vehicle): vehicle is VehicleListItem => Boolean(vehicle)),
+    ])
+  );
 }
 
 /**

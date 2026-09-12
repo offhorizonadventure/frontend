@@ -28,8 +28,11 @@ const NAV_LINKS = [
   { label: "Contact", href: "/contact" },
 ] as const;
 
+// Bhuntar stays in this menu although it is off the home page and footer:
+// its pages rank and are still published.
 const LOCATIONS = [
   { slug: "manali", label: "Manali" },
+  { slug: "kullu", label: "Kullu" },
   { slug: "bhuntar", label: "Bhuntar" },
 ] as const;
 
@@ -201,7 +204,7 @@ function TopBar() {
         </p>
         <p className="flex items-center gap-1.5 whitespace-nowrap">
           <MapPin className="size-3.5 text-brand" aria-hidden="true" />
-          Manali & Bhuntar
+          Manali, Kullu & Bhuntar
         </p>
       </div>
     </div>

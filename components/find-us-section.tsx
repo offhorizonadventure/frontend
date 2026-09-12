@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MapPin } from "lucide-react";
 
 import { LocationSlideshow } from "@/components/location-slideshow";
-import { OFFICES } from "@/lib/locations";
+import { LISTED_OFFICES } from "@/lib/locations";
 
 export function FindUsSection() {
   return (
@@ -14,7 +14,7 @@ export function FindUsSection() {
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-2 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-md bg-brand/10 px-3 py-1 text-xs font-semibold tracking-wide text-brand uppercase">
           <MapPin className="size-3.5" aria-hidden="true" />
-          {OFFICES.length} Pickup Points
+          {LISTED_OFFICES.length} Pickup Points
         </span>
         <h2
           id="find-us-heading"
@@ -29,7 +29,7 @@ export function FindUsSection() {
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-        {OFFICES.map((office) => (
+        {LISTED_OFFICES.map((office) => (
           <Link
             key={`${office.city}-${office.branch}`}
             href={office.cityHref}

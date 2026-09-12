@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Mail, MapPin, Navigation, Phone, ShieldCheck } from "lucide-react";
 
 import {
-  OFFICES,
+  LISTED_OFFICES,
   SUPPORT_EMAIL,
   SUPPORT_PHONE,
   SUPPORT_PHONE_HREF,
@@ -61,7 +61,7 @@ export function SiteFooter() {
               Our Offices
             </h2>
             <ul className="flex flex-col gap-4">
-              {OFFICES.map((office) => (
+              {LISTED_OFFICES.map((office) => (
                 <li
                   key={`${office.city}-${office.branch}`}
                   className="flex items-start gap-2.5"

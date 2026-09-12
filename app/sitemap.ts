@@ -18,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/vehicles`, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_URL}/manali`, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${SITE_URL}/kullu`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/bhuntar`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/blog`, changeFrequency: "daily", priority: 0.8 },
@@ -27,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // The per-city category pages: /manali/bike-rental-in-manali and friends.
-  const cityCategoryRoutes: MetadataRoute.Sitemap = ["manali", "bhuntar"].flatMap(
+  const cityCategoryRoutes: MetadataRoute.Sitemap = ["manali", "kullu", "bhuntar"].flatMap(
     (city) =>
       CITY_CATEGORIES.map((category) => ({
         url: `${SITE_URL}${categoryPath(city, category.key)}`,

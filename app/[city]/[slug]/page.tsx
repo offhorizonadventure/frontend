@@ -8,6 +8,7 @@ import {
   Car,
   ChevronRight,
   Headset,
+  MapPin,
   Zap,
 } from "lucide-react";
 
@@ -17,21 +18,27 @@ import { VehicleCard } from "@/components/vehicle-card";
 import {
   BHUNTAR,
   CITY_CATEGORIES,
+  KULLU,
   MANALI,
   categoryPath,
   parseCategorySlug,
   type CityContent,
 } from "@/lib/city-content";
-import { SUPPORT_PHONE, SUPPORT_PHONE_HREF } from "@/lib/locations";
+import {
+  SUPPORT_PHONE,
+  SUPPORT_PHONE_HREF,
+  officesForCity,
+} from "@/lib/locations";
 import {
   getCategoryImage,
-  getShowcaseVehiclesByCategory,
+  getVehiclesByCategoryAndBranch,
 } from "@/lib/vehicles";
 
 const SITE_URL = "https://www.bikerentalsbhuntar.com";
 
 const CITIES: Record<string, CityContent> = {
   manali: MANALI,
+  kullu: KULLU,
   bhuntar: BHUNTAR,
 };
 
@@ -120,8 +127,13 @@ export default async function CityCategoryPage({ params }: { params: Params }) {
   if (!match) notFound();
 
   const { content, category } = match;
-  const { vehicles, curated } = await getShowcaseVehiclesByCategory(
-    category.categoryName
+
+  // Every branch in this city, in presentation order. Manali has two, so this
+  // page renders two fleet sections; Kullu and Bhuntar have one each.
+  const offices = officesForCity(city);
+  const byBranch = await getVehiclesByCategoryAndBranch(
+    category.categoryName,
+    offices.map((office) => office.key)
   );
   const Icon = CATEGORY_ICONS[category.key] ?? Bike;
   const heading = `${category.label} in ${content.city}`;
@@ -237,66 +249,79 @@ export default async function CityCategoryPage({ params }: { params: Params }) {
       </section>
 
       <div className="mx-auto flex max-w-7xl flex-col gap-14 px-4 py-10 sm:px-6 lg:gap-20 lg:px-8 lg:py-14">
-        {/* Vehicles */}
-        <section aria-labelledby="fleet-heading">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2
-                id="fleet-heading"
-                className="text-2xl font-extrabold tracking-tight text-neutral-950 uppercase italic sm:text-3xl"
-              >
-                {curated ? (
-                  <>
-                    Our <span className="text-brand">Picks</span>
-                  </>
-                ) : (
-                  <>
-                    Available <span className="text-brand">Now</span>
-                  </>
-                )}
-              </h2>
-              <p className="mt-1 max-w-xl text-sm text-neutral-600">
-                {curated
-                  ? `Hand-picked ${category.label.toLowerCase()} options for ${content.city}.`
-                  : `Everything we currently rent in this category.`}
-              </p>
-            </div>
-            <Link
-              href="/vehicles"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition-colors hover:text-brand-dark"
-            >
-              View all
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
+        {/* Vehicles, one section per branch in this city. A rider collects
+            from a single pickup point, so the fleet is presented the way it
+            is actually kept rather than as one pooled list. */}
+        {offices.map((office) => {
+          const branchVehicles = byBranch[office.key] ?? [];
+          const headingId = `fleet-${office.key}`;
 
-          {vehicles.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-10 text-center">
-              <p className="text-base font-semibold text-neutral-950">
-                Nothing listed here just yet
-              </p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
-                Give us a call and we&apos;ll tell you what&apos;s available in{" "}
-                {content.city} right now.
-              </p>
-              <a
-                href={SUPPORT_PHONE_HREF}
-                className="mt-5 inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
-              >
-                <Headset className="size-4" aria-hidden="true" />
-                {SUPPORT_PHONE}
-              </a>
-            </div>
-          ) : (
-            <ul className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {vehicles.map((vehicle) => (
-                <li key={vehicle.id}>
-                  <VehicleCard vehicle={vehicle} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+          return (
+            <section key={office.key} aria-labelledby={headingId}>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2
+                    id={headingId}
+                    className="text-2xl font-extrabold tracking-tight text-neutral-950 uppercase italic sm:text-3xl"
+                  >
+                    {office.city}{" "}
+                    <span className="text-brand">{office.branch}</span>
+                  </h2>
+                  <p className="mt-1 max-w-xl text-sm text-neutral-600">
+                    {category.label} you can collect from our {office.branch}{" "}
+                    branch.
+                  </p>
+                  <a
+                    href={office.directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-start gap-1.5 text-sm text-neutral-500 transition-colors hover:text-brand"
+                  >
+                    <MapPin
+                      className="mt-0.5 size-4 shrink-0 text-neutral-400"
+                      aria-hidden="true"
+                    />
+                    {office.address}
+                  </a>
+                </div>
+                <Link
+                  href="/vehicles"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition-colors hover:text-brand-dark"
+                >
+                  View all
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+
+              {branchVehicles.length === 0 ? (
+                <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-10 text-center">
+                  <p className="text-base font-semibold text-neutral-950">
+                    Nothing listed at {office.branch} just yet
+                  </p>
+                  <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
+                    Give us a call and we&apos;ll tell you what&apos;s
+                    available in {content.city} right now.
+                  </p>
+                  <a
+                    href={SUPPORT_PHONE_HREF}
+                    className="mt-5 inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
+                  >
+                    <Headset className="size-4" aria-hidden="true" />
+                    {SUPPORT_PHONE}
+                  </a>
+                </div>
+              ) : (
+                <ul className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {branchVehicles.map((vehicle) => (
+                    <li key={vehicle.id}>
+                      <VehicleCard vehicle={vehicle} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
 
         <CityContentSections content={content} />
 
